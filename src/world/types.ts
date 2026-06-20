@@ -47,6 +47,10 @@ export interface ContentConfig {
   tooltip?: string;
   /** panel / screen placeholder caption */
   caption?: string;
+  /** panel: image path(s); cycles as a gallery if more than one */
+  images?: string[];
+  /** screen: path to a looping muted video */
+  video?: string;
   /** board: a consolidated, readable info panel */
   heading?: string;
   subheading?: string;

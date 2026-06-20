@@ -230,39 +230,77 @@ function makePanel(c: ContentConfig, isScreen: boolean): THREE.Object3D {
   if (c.rotationY) g.rotation.y = c.rotationY;
   const cy = c.position[1];
 
-  const frame = shadowMesh(new THREE.BoxGeometry(3.5, 2.3, 0.16), std('#39414f'));
+  const FW = 4.5;
+  const FH = 2.55;
+  const IW = 4.2;
+  const IH = 2.3;
+  const hasVideo = isScreen && !!c.video;
+  const hasImages = !isScreen && !!c.images && c.images.length > 0;
+
+  const frame = shadowMesh(new THREE.BoxGeometry(FW, FH, 0.16), std('#222b3a'));
   frame.position.y = cy;
 
-  const innerMat = std(isScreen ? '#10151c' : '#b3bdc9', {
-    roughness: isScreen ? 0.4 : 0.9,
-    emissive: isScreen ? '#0a1f33' : '#000000',
-    emissiveIntensity: isScreen ? 0.3 : 0,
-    side: THREE.DoubleSide,
-  });
-  const inner = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.9), innerMat);
-  inner.position.set(0, cy, 0.09);
-  inner.userData[isScreen ? 'screenSlot' : 'panelSlot'] = true;
-
-  const legH = Math.max(0.4, cy - 1.15);
-  const legL = shadowMesh(new THREE.BoxGeometry(0.12, legH, 0.12), std('#39414f'));
-  legL.position.set(-1.3, legH / 2, 0);
+  const legH = Math.max(0.4, cy - FH / 2);
+  const legL = shadowMesh(new THREE.BoxGeometry(0.12, legH, 0.12), std('#222b3a'));
+  legL.position.set(-FW / 2 + 0.4, legH / 2, 0);
   const legR = legL.clone();
-  legR.position.x = 1.3;
+  legR.position.x = FW / 2 - 0.4;
+  g.add(frame, legL, legR);
 
-  g.add(frame, inner, legL, legR);
-
-  if (isScreen) {
-    const play = shadowMesh(new THREE.ConeGeometry(0.3, 0.5, 3), std('#eaf2fb', { emissive: '#cfe3ff', emissiveIntensity: 0.6 }), false);
-    play.rotation.z = -Math.PI / 2;
-    play.position.set(0, cy, 0.12);
-    g.add(play);
+  if (hasVideo) {
+    const video = document.createElement('video');
+    video.src = c.video as string;
+    video.loop = true;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    // Kept in the DOM (tiny, invisible) so the browser reliably plays it.
+    video.style.cssText = 'position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1;';
+    document.body.appendChild(video);
+    void video.play().catch(() => {});
+    const tex = new THREE.VideoTexture(video);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), new THREE.MeshBasicMaterial({ map: tex }));
+    inner.position.set(0, cy, 0.09);
+    inner.userData.video = video;
+    g.add(inner);
+  } else if (hasImages) {
+    const loader = new THREE.TextureLoader();
+    const texes = (c.images as string[]).map((src) => {
+      const t = loader.load(src);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    });
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), new THREE.MeshBasicMaterial({ map: texes[0] }));
+    inner.position.set(0, cy, 0.09);
+    if (texes.length > 1) inner.userData.gallery = { texes, idx: 0, t: 0 };
+    g.add(inner);
+  } else {
+    // placeholder (awaiting media)
+    const innerMat = std(isScreen ? '#10151c' : '#b3bdc9', {
+      roughness: isScreen ? 0.4 : 0.9,
+      emissive: isScreen ? '#0a1f33' : '#000000',
+      emissiveIntensity: isScreen ? 0.3 : 0,
+      side: THREE.DoubleSide,
+    });
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), innerMat);
+    inner.position.set(0, cy, 0.09);
+    g.add(inner);
+    if (isScreen) {
+      const play = shadowMesh(new THREE.ConeGeometry(0.3, 0.5, 3), std('#eaf2fb', { emissive: '#cfe3ff', emissiveIntensity: 0.6 }), false);
+      play.rotation.z = -Math.PI / 2;
+      play.position.set(0, cy, 0.12);
+      g.add(play);
+    }
+    if (c.caption) {
+      const cap = makeTroika(c.caption, 0.26, isScreen ? '#cfe0f2' : '#33414f');
+      cap.anchorY = 'top';
+      cap.position.set(0, cy - FH / 2 - 0.1, 0.1);
+      cap.sync();
+      g.add(cap);
+    }
   }
-
-  const cap = makeTroika(c.caption ?? '', 0.26, isScreen ? '#cfe0f2' : '#33414f');
-  cap.anchorY = 'top';
-  cap.position.set(0, cy - 1.25, 0.1);
-  cap.sync();
-  g.add(cap);
 
   return g;
 }

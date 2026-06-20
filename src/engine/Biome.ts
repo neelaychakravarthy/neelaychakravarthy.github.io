@@ -32,6 +32,7 @@ export interface BuiltBiome {
   pads: PadInstance[];
   billboards: THREE.Object3D[];
   spinners: THREE.Object3D[];
+  galleries: THREE.Object3D[];
 }
 
 function buildBiome(
@@ -64,10 +65,12 @@ function buildBiome(
   const clickables: THREE.Object3D[] = [];
   const billboards: THREE.Object3D[] = [];
   const spinners: THREE.Object3D[] = [];
+  const galleries: THREE.Object3D[] = [];
   group.traverse((o) => {
     if (o.userData.url !== undefined) clickables.push(o);
     if (o.userData.billboard) billboards.push(o);
     if (o.userData.spinSpeed) spinners.push(o);
+    if (o.userData.gallery) galleries.push(o);
   });
 
   const pads: PadInstance[] = [];
@@ -93,12 +96,16 @@ function buildBiome(
   }
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {
-  if (Array.isArray(m)) m.forEach((x) => x.dispose());
-  else m.dispose();
+  const arr = Array.isArray(m) ? m : [m];
+  for (const x of arr) {
+    const map = (x as THREE.MeshBasicMaterial).map;
+    if (map) map.dispose();
+    x.dispose();
+  }
 }
 
 /**
@@ -148,6 +155,16 @@ export class BiomeManager {
         return;
       }
       if (o instanceof THREE.Mesh) {
+        if (o.userData.video) {
+          const v = o.userData.video as HTMLVideoElement;
+          v.pause();
+          v.removeAttribute('src');
+          v.load();
+          v.remove();
+        }
+        if (o.userData.gallery) {
+          for (const t of (o.userData.gallery as { texes: THREE.Texture[] }).texes) t.dispose();
+        }
         o.geometry.dispose();
         disposeMaterial(o.material);
       }
@@ -168,6 +185,17 @@ export class BiomeManager {
     for (const p of b.pads) {
       p.pulse += dt * 2.5;
       if (p.glow) p.glow.emissiveIntensity = 0.45 + 0.35 * Math.sin(p.pulse);
+    }
+    for (const o of b.galleries) {
+      const gal = o.userData.gallery as { texes: THREE.Texture[]; idx: number; t: number };
+      gal.t += dt;
+      if (gal.t >= 4.5) {
+        gal.t = 0;
+        gal.idx = (gal.idx + 1) % gal.texes.length;
+        const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial;
+        m.map = gal.texes[gal.idx];
+        m.needsUpdate = true;
+      }
     }
   }
 }

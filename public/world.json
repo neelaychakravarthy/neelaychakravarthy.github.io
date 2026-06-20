@@ -117,10 +117,10 @@
             "Live SSE progress · Python · FastAPI · Next.js 16 · React 19"
           ]
         },
-        { "type": "panel", "caption": "Screenshot — coming soon", "position": [-9.5, 2.4, -3], "rotationY": 0.7 },
-        { "type": "screen", "caption": "Demo video — coming soon", "position": [9.5, 2.4, -3], "rotationY": -0.7 },
-        { "type": "link", "label": "Live demo", "url": "#", "position": [3, 0, 9] },
-        { "type": "link", "label": "Code", "url": "#", "position": [-3, 0, 9] }
+        { "type": "panel", "position": [-9.5, 2.5, -3], "rotationY": 0.7, "images": ["/assets/img/goti-1.jpeg", "/assets/img/goti-2.jpeg", "/assets/img/goti-3.jpeg", "/assets/img/goti-4.jpeg", "/assets/img/goti-5.jpeg"] },
+        { "type": "panel", "position": [9.5, 2.5, -3], "rotationY": -0.7, "images": ["/assets/img/goti-3.jpeg", "/assets/img/goti-4.jpeg", "/assets/img/goti-5.jpeg", "/assets/img/goti-1.jpeg", "/assets/img/goti-2.jpeg"] },
+        { "type": "link", "label": "Live demo", "url": "https://goti-black.vercel.app/", "position": [3, 0, 9] },
+        { "type": "link", "label": "Code", "url": "https://github.com/neelaychakravarthy/goti", "position": [-3, 0, 9] }
       ],
       "pads": [
         { "id": "to-hub", "position": [-8.5, 0, 9.5], "target": "hub", "label": "←   Hub", "color": "#7fb4ff", "radius": 2.4 }
@@ -153,11 +153,11 @@
         { "modelId": "big-phone", "position": [7.5, 0, -3.5], "rotationY": -0.45 },
         { "modelId": "pipeline-gate", "position": [-3.6, 0, -9.5] },
         { "modelId": "pipeline-gate", "position": [3.6, 0, -9.5] },
-        { "modelId": "memory-crystal", "position": [9, 0, 1.5] },
-        { "modelId": "memory-crystal", "position": [9.5, 0, -0.5] },
-        { "modelId": "memory-crystal", "position": [8.2, 0, 3] },
-        { "modelId": "lock", "position": [-9, 0, 1] },
-        { "modelId": "lock", "position": [-9.5, 0, -1] },
+        { "modelId": "memory-crystal", "position": [-9, 0, 1.5] },
+        { "modelId": "memory-crystal", "position": [-9.5, 0, -0.5] },
+        { "modelId": "memory-crystal", "position": [-8.2, 0, 3] },
+        { "modelId": "lock", "position": [-2.2, 0, -6.5] },
+        { "modelId": "lock", "position": [2.2, 0, -6.5] },
         { "modelId": "chat-bubble", "position": [-5, 0, 1.5] },
         { "modelId": "chat-bubble", "position": [5, 0, 1.5] },
         { "modelId": "chat-bubble", "position": [-6.5, 0, -6.5] },
@@ -180,10 +180,8 @@
             "Next.js · Inngest · Anthropic Claude"
           ]
         },
-        { "type": "panel", "caption": "Screenshot — coming soon", "position": [-10, 2.4, -2.5], "rotationY": 0.7 },
-        { "type": "screen", "caption": "Demo video — coming soon", "position": [10, 2.4, -2.5], "rotationY": -0.7 },
-        { "type": "link", "label": "Live demo", "url": "#", "position": [3, 0, 9] },
-        { "type": "link", "label": "Code", "url": "#", "position": [-3, 0, 9] }
+        { "type": "screen", "position": [8.5, 2.7, 3], "rotationY": -0.6, "video": "/assets/video/sidekick.mp4" },
+        { "type": "link", "label": "Live demo", "url": "https://sidekick-mu-roan.vercel.app/", "position": [-3, 0, 9.5] }
       ],
       "pads": [
         { "id": "to-hub", "position": [8.5, 0, 9.5], "target": "hub", "label": "Hub   →", "color": "#ffb056", "radius": 2.4 }
