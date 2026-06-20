@@ -1,8 +1,11 @@
 import gsap from 'gsap';
+import * as THREE from 'three';
 import type { SpawnConfig } from '../world/types';
 import type { EnvironmentController, EnvState } from './EnvironmentController';
 import { type BuiltBiome, MORPH_SINK } from './Biome';
 import type { Unit } from './Unit';
+import type { MorphFX } from './MorphFX';
+import type { CameraRig } from './CameraRig';
 
 export interface MorphOptions {
   from: BuiltBiome;
@@ -12,6 +15,8 @@ export interface MorphOptions {
   toEnv: EnvState;
   unit: Unit;
   spawn: SpawnConfig;
+  fx: MorphFX;
+  rig: CameraRig;
   onComplete: () => void;
 }
 
@@ -65,6 +70,18 @@ export class TransitionController {
       tl.to(it.obj.position, { y: it.baseY, duration: 0.9, ease: 'back.out(1.25)' }, at);
       tl.to(it.obj.scale, { x: 1, y: 1, z: 1, duration: 0.9, ease: 'back.out(1.4)' }, at);
     });
+
+    // Escalation: debris as the old world sinks, an eruption + camera punch as
+    // the new world rises.
+    const origin = new THREE.Vector3(0, 0, 0);
+    const baseDist = o.rig.distance;
+    tl.call(() => o.fx.burst(origin, '#ffe2b0'), undefined, 0.1);
+    tl.call(() => {
+      o.fx.shockwave(origin, '#cfe8ff');
+      o.fx.burst(origin, '#ffffff');
+    }, undefined, RISE - 0.05);
+    tl.to(o.rig, { distance: baseDist - 4, duration: 0.18, ease: 'power2.out' }, RISE - 0.05);
+    tl.to(o.rig, { distance: baseDist, duration: 0.55, ease: 'power2.inOut' }, RISE + 0.13);
 
     return tl;
   }

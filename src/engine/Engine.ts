@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PostFX } from './PostFX';
 
 /**
  * Engine — owns the renderer, scene, camera, and the render loop.
@@ -12,6 +13,7 @@ export class Engine {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly clock = new THREE.Clock();
+  readonly postfx: PostFX;
 
   constructor(private container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -23,8 +25,7 @@ export class Engine {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMapping = THREE.NoToneMapping; // tone mapping is done in PostFX
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -38,6 +39,8 @@ export class Engine {
     this.camera.position.set(18, 18, 18);
     this.camera.lookAt(0, 0, 0);
 
+    this.postfx = new PostFX(this.renderer, this.scene, this.camera);
+
     window.addEventListener('resize', this.onResize);
   }
 
@@ -48,6 +51,7 @@ export class Engine {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.postfx.setSize(w, h);
   };
 
   /** Start the render loop. `update(dt)` runs once per frame before the render. */
@@ -55,7 +59,7 @@ export class Engine {
     this.renderer.setAnimationLoop(() => {
       const dt = Math.min(this.clock.getDelta(), 0.1); // clamp to avoid jumps after tab-out
       update(dt);
-      this.renderer.render(this.scene, this.camera);
+      this.postfx.render(dt);
     });
   }
 

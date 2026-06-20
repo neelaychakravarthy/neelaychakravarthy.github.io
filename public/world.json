@@ -181,7 +181,8 @@
           ]
         },
         { "type": "screen", "position": [8.5, 2.7, 3], "rotationY": -0.6, "video": "/assets/video/sidekick.mp4" },
-        { "type": "link", "label": "Live demo", "url": "https://sidekick-mu-roan.vercel.app/", "position": [-3, 0, 9.5] }
+        { "type": "link", "label": "Live demo", "url": "https://sidekick-mu-roan.vercel.app/", "position": [-3, 0, 9.5] },
+        { "type": "link", "label": "Video", "url": "https://youtu.be/KXn0nfsxkIE", "tooltip": "Watch on YouTube  ↗", "position": [3, 0, 9.5] }
       ],
       "pads": [
         { "id": "to-hub", "position": [8.5, 0, 9.5], "target": "hub", "label": "Hub   →", "color": "#ffb056", "radius": 2.4 }

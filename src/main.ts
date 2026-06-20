@@ -1,7 +1,9 @@
 import './style.css';
+import gsap from 'gsap';
 import Stats from 'stats.js';
 import GUI from 'lil-gui';
 import { Engine } from './engine/Engine';
+import { MorphFX } from './engine/MorphFX';
 import { EnvironmentController } from './engine/EnvironmentController';
 import { CameraRig } from './engine/CameraRig';
 import { Unit } from './engine/Unit';
@@ -83,8 +85,20 @@ async function boot() {
 
   const start = biomes.start(world.startBiome);
   applySpawn(unit, start.config.spawn);
+  engine.postfx.setSelection(start.glows);
+
+  const fx = new MorphFX(
+    engine.scene,
+    (o) => engine.postfx.addGlow(o),
+    (o) => engine.postfx.removeGlow(o),
+  );
 
   const rig = new CameraRig(engine.camera, engine.renderer.domElement);
+  // gentle intro: ease the camera in from slightly further out
+  const restDistance = rig.distance;
+  rig.distance = restDistance + 9;
+  gsap.to(rig, { distance: restDistance, duration: 1.8, ease: 'power2.out', delay: 0.15 });
+
   const transition = new TransitionController();
   const interaction = new InteractionManager();
   interaction.setBiome(start.pads, unit.position);
@@ -124,6 +138,7 @@ async function boot() {
     const from = biomes.current;
     const to = biomes.build(target, true);
     audio.setBiome(to.config.audio);
+    engine.postfx.setSelection([...from.glows, ...to.glows]);
     const spawn = to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
     transition.morph({
       from,
@@ -133,10 +148,13 @@ async function boot() {
       toEnv: env.stateFor(to.config.environment),
       unit,
       spawn,
+      fx,
+      rig,
       onComplete: () => {
         biomes.dispose(from);
         biomes.current = to;
         interaction.setBiome(to.pads, unit.position);
+        engine.postfx.setSelection(to.glows);
         locked = false;
       },
     });
@@ -191,7 +209,8 @@ async function boot() {
     }
     click.update(dt, unit.hasTarget && !locked);
     rig.update(dt, unit.position);
-    biomes.update(dt, engine.camera);
+    fx.update(dt);
+    biomes.update(dt, engine.camera, unit.position);
 
     if (firstFrame) {
       firstFrame = false;

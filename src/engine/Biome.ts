@@ -33,6 +33,8 @@ export interface BuiltBiome {
   billboards: THREE.Object3D[];
   spinners: THREE.Object3D[];
   galleries: THREE.Object3D[];
+  videos: THREE.Object3D[];
+  glows: THREE.Object3D[];
 }
 
 function buildBiome(
@@ -66,11 +68,19 @@ function buildBiome(
   const billboards: THREE.Object3D[] = [];
   const spinners: THREE.Object3D[] = [];
   const galleries: THREE.Object3D[] = [];
+  const videos: THREE.Object3D[] = [];
+  const glows: THREE.Object3D[] = [];
   group.traverse((o) => {
     if (o.userData.url !== undefined) clickables.push(o);
     if (o.userData.billboard) billboards.push(o);
     if (o.userData.spinSpeed) spinners.push(o);
     if (o.userData.gallery) galleries.push(o);
+    if (o.userData.video) videos.push(o);
+    if (o instanceof THREE.Mesh) {
+      const mat = (Array.isArray(o.material) ? o.material[0] : o.material) as THREE.MeshStandardMaterial;
+      const e = mat?.emissive;
+      if (e && e.r + e.g + e.b > 0.05 && (mat.emissiveIntensity ?? 0) > 0.25) glows.push(o);
+    }
   });
 
   const pads: PadInstance[] = [];
@@ -96,7 +106,7 @@ function buildBiome(
   }
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {
@@ -171,7 +181,7 @@ export class BiomeManager {
     });
   }
 
-  update(dt: number, camera: THREE.Camera) {
+  update(dt: number, camera: THREE.Camera, unitPos: THREE.Vector3) {
     const b = this.current;
     if (!b) return;
 
@@ -187,15 +197,44 @@ export class BiomeManager {
       if (p.glow) p.glow.emissiveIntensity = 0.45 + 0.35 * Math.sin(p.pulse);
     }
     for (const o of b.galleries) {
-      const gal = o.userData.gallery as { texes: THREE.Texture[]; idx: number; t: number };
-      gal.t += dt;
-      if (gal.t >= 4.5) {
-        gal.t = 0;
-        gal.idx = (gal.idx + 1) % gal.texes.length;
-        const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial;
-        m.map = gal.texes[gal.idx];
-        m.needsUpdate = true;
+      const gal = o.userData.gallery as { texes: THREE.Texture[]; idx: number; t: number; phase: string; fadeT: number };
+      const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      const FADE = 0.4;
+      if (gal.phase === 'hold') {
+        gal.t += dt;
+        if (gal.t >= 4.2) {
+          gal.phase = 'out';
+          gal.fadeT = 0;
+        }
+      } else if (gal.phase === 'out') {
+        gal.fadeT += dt;
+        m.opacity = Math.max(0, 1 - gal.fadeT / FADE);
+        if (gal.fadeT >= FADE) {
+          gal.idx = (gal.idx + 1) % gal.texes.length;
+          m.map = gal.texes[gal.idx];
+          m.needsUpdate = true;
+          gal.phase = 'in';
+          gal.fadeT = 0;
+        }
+      } else {
+        gal.fadeT += dt;
+        m.opacity = Math.min(1, gal.fadeT / FADE);
+        if (gal.fadeT >= FADE) {
+          m.opacity = 1;
+          gal.phase = 'hold';
+          gal.t = 0;
+        }
       }
+    }
+    // play the demo video only when the unit is near the screen
+    for (const o of b.videos) {
+      o.getWorldPosition(this.tmp);
+      const dx = this.tmp.x - unitPos.x;
+      const dz = this.tmp.z - unitPos.z;
+      const near = dx * dx + dz * dz < 14 * 14;
+      const v = o.userData.video as HTMLVideoElement;
+      if (near && v.paused) void v.play().catch(() => {});
+      else if (!near && !v.paused) v.pause();
     }
   }
 }

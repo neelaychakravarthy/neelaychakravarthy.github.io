@@ -23,11 +23,15 @@ function shadowMesh(geo: THREE.BufferGeometry, mat: THREE.Material, cast = true)
   m.castShadow = cast;
   return m;
 }
-function makeTroika(text: string, size: number, color: THREE.ColorRepresentation): Text {
+const FONT_REGULAR = '/assets/fonts/inter-500.woff';
+const FONT_BOLD = '/assets/fonts/inter-700.woff';
+
+function makeTroika(text: string, size: number, color: THREE.ColorRepresentation, bold = false): Text {
   const t = new Text();
   t.text = text;
   t.fontSize = size;
   t.color = color;
+  t.font = bold ? FONT_BOLD : FONT_REGULAR;
   t.anchorX = 'center';
   t.anchorY = 'middle';
   t.textAlign = 'center';
@@ -103,8 +107,8 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
 
   // lay text out downward from the top edge (local y = 0)
   let y = -padTop;
-  const place = (text: string, size: number, color: THREE.ColorRepresentation) => {
-    const t = makeTroika(text, size, color);
+  const place = (text: string, size: number, color: THREE.ColorRepresentation, bold = false) => {
+    const t = makeTroika(text, size, color, bold);
     t.anchorY = 'top';
     t.maxWidth = innerW;
     t.position.set(0, y, 0.02);
@@ -113,7 +117,7 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
     y -= size * 1.34;
   };
 
-  place(c.heading ?? '', headingSize, '#ffffff');
+  place(c.heading ?? '', headingSize, '#ffffff', true);
   y -= 0.06;
   if (c.subheading) place(c.subheading, subSize, '#d7e2f0');
   if (c.badge) {
@@ -157,7 +161,7 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
 
 function makeText(c: ContentConfig): THREE.Object3D {
   const defaultColor = c.type === 'title' ? '#16202b' : c.type === 'subtitle' ? '#2f3d4b' : '#3a4654';
-  const t = makeTroika(c.text ?? '', c.size ?? 0.4, c.color ?? defaultColor);
+  const t = makeTroika(c.text ?? '', c.size ?? 0.4, c.color ?? defaultColor, c.type === 'title');
   t.maxWidth = c.type === 'title' ? 18 : 13;
   t.outlineWidth = '5%';
   t.outlineColor = '#ffffff';
@@ -272,9 +276,9 @@ function makePanel(c: ContentConfig, isScreen: boolean): THREE.Object3D {
       t.colorSpace = THREE.SRGBColorSpace;
       return t;
     });
-    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), new THREE.MeshBasicMaterial({ map: texes[0] }));
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), new THREE.MeshBasicMaterial({ map: texes[0], transparent: true }));
     inner.position.set(0, cy, 0.09);
-    if (texes.length > 1) inner.userData.gallery = { texes, idx: 0, t: 0 };
+    if (texes.length > 1) inner.userData.gallery = { texes, idx: 0, t: 0, phase: 'hold', fadeT: 0 };
     g.add(inner);
   } else {
     // placeholder (awaiting media)
@@ -327,7 +331,7 @@ export function makePad(p: PadConfig): THREE.Object3D {
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.1;
 
-  const label = makeTroika(p.label, 0.42, '#16202b');
+  const label = makeTroika(p.label, 0.42, '#16202b', true);
   label.position.set(0, 1.6, 0);
   label.outlineWidth = '6%';
   label.outlineColor = color;

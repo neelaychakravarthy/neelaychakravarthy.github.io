@@ -12,6 +12,7 @@
   "dependencies": {
     "gsap": "^3.15.0",
     "lil-gui": "^0.20.0",
+    "postprocessing": "^6.39.1",
     "stats.js": "^0.17.0",
     "three": "^0.170.0",
     "troika-three-text": "^0.52.4"
