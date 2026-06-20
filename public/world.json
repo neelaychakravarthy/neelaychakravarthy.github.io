@@ -37,7 +37,7 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 2.8, -5],
+          "position": [0, 4.3, -5],
           "width": 7.2,
           "accent": "#7fb4ff",
           "heading": "Neelay Chakravarthy",
@@ -49,7 +49,7 @@
         },
         { "type": "link", "label": "GitHub", "url": "https://github.com/neelaychakravarthy", "position": [-3.6, 0, 4.5] },
         { "type": "link", "label": "LinkedIn", "url": "https://linkedin.com/in/neelay-chakravarthy", "position": [0, 0, 5.2] },
-        { "type": "link", "label": "Email", "url": "mailto:nkchakra2@gmail.com", "position": [3.6, 0, 4.5] }
+        { "type": "link", "label": "Email", "tooltip": "nkchakra2@gmail.com", "position": [3.6, 0, 4.5] }
       ],
       "pads": [
         { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },
@@ -104,7 +104,7 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 3.2, -8],
+          "position": [0, 4.5, -8],
           "width": 7.6,
           "accent": "#ffb056",
           "heading": "Goti",
@@ -166,7 +166,7 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 3.4, -5.5],
+          "position": [0, 4.5, -5.5],
           "width": 7.6,
           "accent": "#5ad1ff",
           "heading": "Sidekick",

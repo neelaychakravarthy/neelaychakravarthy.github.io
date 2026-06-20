@@ -43,6 +43,8 @@ export interface ContentConfig {
   /** link */
   label?: string;
   url?: string;
+  /** hover bubble text; omit url to make a non-clickable info chip (e.g. email) */
+  tooltip?: string;
   /** panel / screen placeholder caption */
   caption?: string;
   /** board: a consolidated, readable info panel */

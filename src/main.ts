@@ -148,7 +148,7 @@ async function boot() {
   stats.dom.style.cssText = 'position:fixed;top:8px;left:8px;z-index:30;';
   document.body.appendChild(stats.dom);
 
-  const gui = new GUI({ title: 'Phase 1 — tuning' });
+  const gui = new GUI({ title: 'Settings' });
   const mv = gui.addFolder('Movement');
   mv.add(unit, 'speed', 1, 20, 0.5);
   mv.add(unit, 'turnRate', 1, 12, 0.5);

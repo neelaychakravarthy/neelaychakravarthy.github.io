@@ -21,6 +21,7 @@ export class ClickToMove {
   private readonly marker: THREE.Group;
   private readonly ring: THREE.Mesh;
   private pulse = 0;
+  private hoveredTip: THREE.Object3D | null = null;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -41,6 +42,7 @@ export class ClickToMove {
     scene.add(this.marker);
 
     dom.addEventListener('pointerdown', this.onPointerDown);
+    dom.addEventListener('pointermove', this.onPointerMove);
   }
 
   private onPointerDown = (e: PointerEvent) => {
@@ -69,6 +71,40 @@ export class ClickToMove {
     this.pulse = 0;
   };
 
+  private onPointerMove = (e: PointerEvent) => {
+    if (this.handlers.isLocked()) {
+      this.clearHover();
+      return;
+    }
+    const clickables = this.handlers.getClickables();
+    if (!clickables.length) {
+      this.clearHover();
+      return;
+    }
+    const rect = this.dom.getBoundingClientRect();
+    this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    const hit = this.raycaster.intersectObjects(clickables, false)[0];
+    const tip = (hit?.object.userData.tooltip3d as THREE.Object3D | undefined) ?? null;
+    if (tip !== this.hoveredTip) {
+      if (this.hoveredTip) this.hoveredTip.visible = false;
+      if (tip) tip.visible = true;
+      this.hoveredTip = tip;
+    }
+    const url = hit?.object.userData.url as string | undefined;
+    this.dom.style.cursor = url && url !== '#' ? 'pointer' : 'default';
+  };
+
+  private clearHover() {
+    if (this.hoveredTip) {
+      this.hoveredTip.visible = false;
+      this.hoveredTip = null;
+    }
+    this.dom.style.cursor = 'default';
+  }
+
   update(_dt: number, active: boolean) {
     if (!active) {
       this.marker.visible = false;
@@ -80,5 +116,6 @@ export class ClickToMove {
 
   dispose() {
     this.dom.removeEventListener('pointerdown', this.onPointerDown);
+    this.dom.removeEventListener('pointermove', this.onPointerMove);
   }
 }

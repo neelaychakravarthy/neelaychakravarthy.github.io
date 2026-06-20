@@ -80,66 +80,75 @@ function panelMat(color: THREE.ColorRepresentation, opacity: number) {
  */
 function makeBoard(c: ContentConfig): THREE.Object3D {
   const g = new THREE.Group();
-  g.position.set(...c.position);
+  g.position.set(...c.position); // position.y is the TOP edge of the board
   if (c.rotationY) g.rotation.y = c.rotationY;
 
-  const W = c.width ?? 7.0;
-  const pad = 0.5;
+  const W = c.width ?? 7.4;
+  const padX = 0.55;
+  const padTop = 0.5;
+  const padBottom = 0.5;
+  const innerW = W - padX * 2;
   const accent = c.accent ?? '#9fb4ff';
   const lines = c.lines ?? [];
 
-  const headingSize = 0.56;
-  const subSize = 0.33;
-  const badgeSize = 0.26;
-  const lineSize = 0.26;
-  const lineStep = lineSize * 1.55;
+  const headingSize = 0.54;
+  const subSize = 0.32;
+  const badgeSize = 0.25;
+  const lineSize = 0.25;
 
-  let contentH = headingSize * 1.3;
-  if (c.subheading) contentH += subSize * 1.6;
-  if (c.badge) contentH += badgeSize * 1.8;
-  contentH += 0.3;
-  contentH += lines.length * lineStep;
-  const H = contentH + pad * 2;
+  // accent bar near the top edge
+  const bar = new THREE.Mesh(roundedRect(W - 0.6, 0.09, 0.04), panelMat(accent, 0.9));
+  bar.position.set(0, -0.26, 0.01);
+  g.add(bar);
 
-  const border = new THREE.Mesh(roundedRect(W + 0.14, H + 0.14, 0.46), panelMat(accent, 0.28));
-  border.position.z = -0.06;
-  border.renderOrder = -3;
-  const backing = new THREE.Mesh(roundedRect(W, H, 0.4), panelMat('#0b1320', 0.58));
-  backing.position.z = -0.04;
-  backing.renderOrder = -2;
-  const bar = new THREE.Mesh(roundedRect(W - 0.5, 0.09, 0.04), panelMat(accent, 0.9));
-  bar.position.set(0, H / 2 - 0.3, 0);
-  g.add(border, backing, bar);
-
-  let y = H / 2 - pad - headingSize * 0.6;
+  // lay text out downward from the top edge (local y = 0)
+  let y = -padTop;
   const place = (text: string, size: number, color: THREE.ColorRepresentation) => {
     const t = makeTroika(text, size, color);
-    t.maxWidth = W - pad * 2;
+    t.anchorY = 'top';
+    t.maxWidth = innerW;
     t.position.set(0, y, 0.02);
     t.sync();
     g.add(t);
+    y -= size * 1.34;
   };
 
   place(c.heading ?? '', headingSize, '#ffffff');
-  y -= headingSize * 1.3;
-  if (c.subheading) {
-    place(c.subheading, subSize, '#d7e2f0');
-    y -= subSize * 1.6;
-  }
+  y -= 0.06;
+  if (c.subheading) place(c.subheading, subSize, '#d7e2f0');
   if (c.badge) {
+    y -= 0.05;
     place(c.badge, badgeSize, accent);
-    y -= badgeSize * 1.8;
   }
-  y -= 0.18;
+  y -= 0.22;
+
+  // The backing is sized to the *measured* body height (robust to wrapping).
+  const buildBacking = (bottomY: number) => {
+    const H = -bottomY + padBottom;
+    const cy = -H / 2;
+    const backing = new THREE.Mesh(roundedRect(W, H, 0.42), panelMat('#0b1320', 0.6));
+    backing.position.set(0, cy, -0.05);
+    backing.renderOrder = -2;
+    const border = new THREE.Mesh(roundedRect(W + 0.14, H + 0.14, 0.48), panelMat(accent, 0.3));
+    border.position.set(0, cy, -0.07);
+    border.renderOrder = -3;
+    g.add(backing, border);
+  };
 
   if (lines.length) {
     const body = makeTroika(lines.join('\n'), lineSize, '#ccd7e6');
     body.anchorY = 'top';
     body.lineHeight = 1.55;
-    body.maxWidth = W - pad * 2;
+    body.maxWidth = innerW;
     body.position.set(0, y, 0.02);
-    body.sync();
+    body.sync(() => {
+      const bb = (body as unknown as { textRenderInfo?: { blockBounds: number[] } }).textRenderInfo?.blockBounds;
+      const bodyH = bb ? bb[3] - bb[1] : lines.length * lineSize * 1.55;
+      buildBacking(y - bodyH);
+    });
     g.add(body);
+  } else {
+    buildBacking(y);
   }
 
   g.userData.billboard = true;
@@ -165,20 +174,53 @@ function makeLink(c: ContentConfig): THREE.Object3D {
   g.position.set(c.position[0], 0, c.position[2]);
   const label = c.label ?? 'link';
   const w = Math.max(1.3, label.length * 0.2 + 0.7);
+  const url = c.url ?? '';
+  const clickable = !!url && url !== '#';
 
   const stem = shadowMesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6), std('#2c3a4a'), false);
   stem.position.y = 0.55;
 
   const chip = shadowMesh(new THREE.BoxGeometry(w, 0.64, 0.1), std('#26323f', { emissive: '#1d3a5c', emissiveIntensity: 0.45, roughness: 0.4 }), false);
   chip.position.y = 1.25;
-  chip.userData.url = c.url ?? '';
+  chip.userData.url = url;
 
   const t = makeTroika(label, 0.3, '#eaf2fb');
   t.position.set(0, 1.25, 0.07);
   t.sync();
 
-  g.add(stem, chip, t);
+  // hover bubble — "Click me" for real links, the address for an info chip
+  const tip = makeTooltip(c.tooltip ?? (clickable ? 'Click me  ↗' : 'Coming soon'));
+  tip.position.set(0, 2.45, 0);
+  chip.userData.tooltip3d = tip;
+
+  g.add(stem, chip, t, tip);
   g.userData.billboard = true;
+  return g;
+}
+
+/** A small speech-bubble tooltip (hidden until hovered). */
+function makeTooltip(text: string): THREE.Object3D {
+  const g = new THREE.Group();
+  g.visible = false;
+
+  const tipMat = () => new THREE.MeshBasicMaterial({ color: '#13233f', transparent: true, opacity: 0.95, depthWrite: false, depthTest: false });
+
+  const t = makeTroika(text, 0.26, '#ffffff');
+  t.position.set(0, 0, 0.03);
+  t.renderOrder = 11;
+  t.sync(() => {
+    const bb = (t as unknown as { textRenderInfo?: { blockBounds: number[] } }).textRenderInfo?.blockBounds;
+    const w = (bb ? bb[2] - bb[0] : text.length * 0.16) + 0.5;
+    const h = (bb ? bb[3] - bb[1] : 0.3) + 0.34;
+    const panel = new THREE.Mesh(roundedRect(w, h, 0.14), tipMat());
+    panel.renderOrder = 10;
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.2, 3), tipMat());
+    tail.position.set(0, -h / 2 - 0.06, 0);
+    tail.rotation.z = Math.PI;
+    tail.renderOrder = 10;
+    g.add(panel, tail);
+  });
+  g.add(t);
   return g;
 }
 
