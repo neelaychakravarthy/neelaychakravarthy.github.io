@@ -1,10 +1,19 @@
 import * as THREE from 'three';
 
+export interface ClickHandlers {
+  /** Left-click hit the ground at this world point. */
+  onGround: (point: THREE.Vector3) => void;
+  /** Current clickable objects (link chips carrying userData.url). */
+  getClickables: () => THREE.Object3D[];
+  /** A clickable object was hit. */
+  onInteract: (obj: THREE.Object3D) => void;
+  /** While true, input is ignored (e.g. mid-morph). */
+  isLocked: () => boolean;
+}
+
 /**
- * ClickToMove — left-click the ground to set the unit's destination.
- *
- * Raycasts the pointer against the ground mesh, calls `onPick` with the world
- * point, and shows a pulsing marker there until the unit arrives.
+ * ClickToMove — left-click to drive. Clickable interactables (links) take
+ * priority over the ground, so clicking a link opens it instead of moving.
  */
 export class ClickToMove {
   private readonly raycaster = new THREE.Raycaster();
@@ -18,20 +27,15 @@ export class ClickToMove {
     private dom: HTMLElement,
     private ground: THREE.Object3D,
     scene: THREE.Scene,
-    private onPick: (point: THREE.Vector3) => void,
+    private handlers: ClickHandlers,
   ) {
     this.marker = new THREE.Group();
-    const ringGeo = new THREE.RingGeometry(0.55, 0.8, 32);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: '#ffd23f',
-      transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    this.ring = new THREE.Mesh(ringGeo, ringMat);
+    this.ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.55, 0.8, 32),
+      new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }),
+    );
     this.ring.rotation.x = -Math.PI / 2;
-    this.ring.position.y = 0.03;
+    this.ring.position.y = 0.04;
     this.marker.add(this.ring);
     this.marker.visible = false;
     scene.add(this.marker);
@@ -40,31 +44,38 @@ export class ClickToMove {
   }
 
   private onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0) return; // left button only
+    if (e.button !== 0 || this.handlers.isLocked()) return;
+
     const rect = this.dom.getBoundingClientRect();
     this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster.intersectObject(this.ground, false)[0];
-    if (!hit) return; // clicked the sky / off-world: ignore
 
-    this.onPick(hit.point);
-    this.marker.position.copy(hit.point);
-    this.marker.position.y = 0;
+    // Interactables win over ground.
+    const clickables = this.handlers.getClickables();
+    if (clickables.length) {
+      const hit = this.raycaster.intersectObjects(clickables, false)[0];
+      if (hit) {
+        this.handlers.onInteract(hit.object);
+        return;
+      }
+    }
+
+    const g = this.raycaster.intersectObject(this.ground, false)[0];
+    if (!g) return;
+    this.handlers.onGround(g.point);
+    this.marker.position.set(g.point.x, 0, g.point.z);
     this.marker.visible = true;
     this.pulse = 0;
   };
 
-  /** `active` should be true while the unit is still travelling to the marker. */
-  update(dt: number, active: boolean) {
+  update(_dt: number, active: boolean) {
     if (!active) {
       this.marker.visible = false;
       return;
     }
-    this.pulse += dt * 4;
-    const s = 1 + Math.sin(this.pulse) * 0.12;
-    this.marker.scale.setScalar(s);
+    this.pulse += _dt * 4;
+    this.marker.scale.setScalar(1 + Math.sin(this.pulse) * 0.12);
   }
 
   dispose() {

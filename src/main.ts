@@ -2,16 +2,21 @@ import './style.css';
 import Stats from 'stats.js';
 import GUI from 'lil-gui';
 import { Engine } from './engine/Engine';
+import { EnvironmentController } from './engine/EnvironmentController';
 import { CameraRig } from './engine/CameraRig';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
-import { buildTestScene } from './world/TestScene';
+import { AssetRegistry } from './engine/AssetRegistry';
+import { BiomeManager } from './engine/Biome';
+import { TransitionController } from './engine/TransitionController';
+import { InteractionManager } from './engine/InteractionManager';
+import { loadWorld } from './engine/WorldLoader';
+import type { SpawnConfig } from './world/types';
 
 function hideLoader() {
   document.getElementById('loader')?.classList.add('hidden');
 }
 
-/** Replace the infinite spinner with a readable error panel. */
 function showFatal(title: string, detail: string) {
   hideLoader();
   const wrap = document.createElement('div');
@@ -33,7 +38,6 @@ function showFatal(title: string, detail: string) {
   document.body.append(wrap);
 }
 
-/** Minimal WebGL2 availability probe (matches what three's renderer needs). */
 function webgl2Available(): boolean {
   try {
     const canvas = document.createElement('canvas');
@@ -43,91 +47,137 @@ function webgl2Available(): boolean {
   }
 }
 
-try {
+function applySpawn(unit: Unit, spawn?: SpawnConfig) {
+  if (!spawn) return;
+  unit.object.position.set(...spawn.position);
+  unit.object.rotation.y = spawn.rotationY ?? Math.PI;
+}
+
+async function boot() {
   if (!webgl2Available()) {
     showFatal(
       'WebGL isn’t available in this browser',
       'This world is rendered with WebGL, which your browser isn’t currently providing.\n\n' +
         '• Chrome → Settings → System → turn on “Use graphics acceleration when available”, then relaunch Chrome.\n' +
-        '• Visit chrome://gpu to see if WebGL is blocklisted.\n' +
-        '• Disable any extension that might block scripts/canvas for localhost.\n\n' +
+        '• Visit chrome://gpu to check whether WebGL is blocklisted.\n\n' +
         'Then hard-reload (⌘⇧R).',
     );
-    throw new Error('WebGL2 unavailable');
+    return;
   }
 
   const app = document.getElementById('app');
   if (!app) throw new Error('#app container missing');
 
+  const world = await loadWorld();
+
   const engine = new Engine(app);
-  const { ground } = buildTestScene(engine.scene);
+  const env = new EnvironmentController(engine.scene);
+  const registry = new AssetRegistry();
+  const biomes = new BiomeManager(engine.scene, registry, env, world);
 
   const unit = new Unit();
+  if (world.unit?.speed) unit.speed = world.unit.speed;
+  if (world.unit?.turnRate) unit.turnRate = world.unit.turnRate;
   engine.scene.add(unit.object);
 
-  const rig = new CameraRig(engine.camera, engine.renderer.domElement);
-  const click = new ClickToMove(
-    engine.camera,
-    engine.renderer.domElement,
-    ground,
-    engine.scene,
-    (point) => unit.setTarget(point),
-  );
+  const start = biomes.start(world.startBiome);
+  applySpawn(unit, start.config.spawn);
 
-  // Free the GL context on navigate-away so repeated reloads don't exhaust Chrome's context pool.
+  const rig = new CameraRig(engine.camera, engine.renderer.domElement);
+  const transition = new TransitionController();
+  const interaction = new InteractionManager();
+  interaction.setBiome(start.pads, unit.position);
+
   window.addEventListener('pagehide', () => engine.dispose(), { once: true });
+
+  let locked = false;
+
+  const click = new ClickToMove(engine.camera, engine.renderer.domElement, env.ground, engine.scene, {
+    onGround: (p) => {
+      if (!locked) unit.setTarget(p);
+    },
+    getClickables: () => biomes.current?.clickables ?? [],
+    onInteract: (obj) => {
+      const url = obj.userData.url as string;
+      if (url && url !== '#') window.open(url, '_blank', 'noopener');
+    },
+    isLocked: () => locked,
+  });
+
+  function triggerMorph(target: string) {
+    if (locked || !biomes.current || biomes.current.id === target) return;
+    locked = true;
+    unit.stop();
+    const from = biomes.current;
+    const to = biomes.build(target, true);
+    const spawn = to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
+    transition.morph({
+      from,
+      to,
+      env,
+      fromEnv: env.stateFor(from.config.environment),
+      toEnv: env.stateFor(to.config.environment),
+      unit,
+      spawn,
+      onComplete: () => {
+        biomes.dispose(from);
+        biomes.current = to;
+        interaction.setBiome(to.pads, unit.position);
+        locked = false;
+      },
+    });
+  }
 
   // ---- dev HUD ----
   const stats = new Stats();
-  stats.showPanel(0); // FPS
+  stats.showPanel(0);
   stats.dom.style.cssText = 'position:fixed;top:8px;left:8px;z-index:30;';
   document.body.appendChild(stats.dom);
 
-  const gui = new GUI({ title: 'Phase 0 — tuning' });
+  const gui = new GUI({ title: 'Phase 1 — tuning' });
   const mv = gui.addFolder('Movement');
   mv.add(unit, 'speed', 1, 20, 0.5);
   mv.add(unit, 'turnRate', 1, 12, 0.5);
-  mv.add(unit, 'accel', 4, 60, 1);
   const cam = gui.addFolder('Camera');
   cam.add(rig, 'distance', rig.minDistance, rig.maxDistance, 1).listen();
   cam.add(rig, 'elevationDeg', 15, 75, 1);
   cam.add(rig, 'followRate', 1, 16, 0.5);
+  gui.close();
 
-  // Watchdog: if the first frame never renders, say so instead of spinning forever.
+  // ---- run ----
+  let firstFrame = true;
   let rendered = false;
   const watchdog = window.setTimeout(() => {
     if (!rendered) {
       showFatal(
         'The 3D world didn’t start',
-        'The first frame hasn’t rendered after 8s. Open the console (⌘⌥J) and share any red errors — that will pinpoint it.',
+        'The first frame hasn’t rendered after 8s. Open the console (⌘⌥J) and share any red errors.',
       );
     }
   }, 8000);
 
-  // ---- run ----
-  let firstFrame = true;
   engine.start((dt) => {
-    unit.update(dt);
-    click.update(dt, unit.hasTarget);
+    if (!locked) {
+      unit.update(dt);
+      interaction.update(unit.position, triggerMorph);
+    }
+    click.update(dt, unit.hasTarget && !locked);
     rig.update(dt, unit.position);
+    biomes.update(dt, engine.camera);
 
     if (firstFrame) {
       firstFrame = false;
       rendered = true;
       window.clearTimeout(watchdog);
       hideLoader();
-      window.setTimeout(() => document.getElementById('hint')?.classList.add('faded'), 6000);
+      window.setTimeout(() => document.getElementById('hint')?.classList.add('faded'), 6500);
     }
-
     stats.update();
   });
-} catch (err) {
+}
+
+boot().catch((err) => {
   console.error('[portfolio] startup failed:', err);
   const message = err instanceof Error ? err.message : String(err);
-  if (message !== 'WebGL2 unavailable') {
-    showFatal(
-      'Something went wrong starting the 3D world',
-      message + '\n\nOpen the console (⌘⌥J) for the full stack trace.',
-    );
-  }
-}
+  showFatal('Something went wrong starting the 3D world', message + '\n\nOpen the console (⌘⌥J) for the full stack trace.');
+});

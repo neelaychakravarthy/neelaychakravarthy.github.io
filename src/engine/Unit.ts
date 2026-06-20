@@ -47,6 +47,12 @@ export class Unit {
     this.target.y = 0;
   }
 
+  /** Cancel movement (used while a morph drives the unit externally). */
+  stop() {
+    this.target = null;
+    this.velocity = 0;
+  }
+
   update(dt: number) {
     const yaw = this.object.rotation.y;
     this.forward.set(Math.sin(yaw), 0, Math.cos(yaw));

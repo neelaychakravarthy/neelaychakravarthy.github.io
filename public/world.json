@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "unit": { "speed": 10, "turnRate": 5.5 },
+  "startBiome": "hub",
+  "biomes": [
+    {
+      "id": "hub",
+      "title": "Hub",
+      "environment": {
+        "skyTop": "#a9d4ff",
+        "skyBottom": "#fbfdff",
+        "fogColor": "#dcebfa",
+        "fogNear": 50,
+        "fogFar": 150,
+        "hemiSky": "#dff0ff",
+        "hemiGround": "#c2cdd6",
+        "hemiIntensity": 1.1,
+        "sunColor": "#fff6e8",
+        "sunIntensity": 2.6,
+        "sunPosition": [24, 34, 18],
+        "groundColor": "#e7edf4"
+      },
+      "spawn": { "position": [0, 0, 11], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -3] },
+        { "modelId": "monument", "position": [0, 0, -6] },
+        { "modelId": "pillar", "position": [-7, 0, -6] },
+        { "modelId": "pillar", "position": [7, 0, -6] },
+        { "modelId": "pillar", "position": [-9, 0, 1] },
+        { "modelId": "pillar", "position": [9, 0, 1] },
+        { "modelId": "planter", "position": [-4.5, 0, -9] },
+        { "modelId": "planter", "position": [4.5, 0, -9] }
+      ],
+      "content": [
+        { "type": "title", "text": "Neelay Chakravarthy", "position": [0, 3.5, -3], "size": 1.05 },
+        { "type": "subtitle", "text": "AI Engineer  ·  Agentic AI & Full-Stack", "position": [0, 2.6, -3], "size": 0.46 },
+        { "type": "fact", "text": "AI Engineer @ TrustLogix — MCP servers, multi-agent systems, RAG", "position": [0, 2.0, -3], "size": 0.3 },
+        { "type": "fact", "text": "B.S. Computer Science · Santa Clara University '24", "position": [0, 1.55, -3], "size": 0.3 },
+        { "type": "link", "label": "GitHub", "url": "https://github.com/neelaychakravarthy", "position": [-6.5, 0, 0.5] },
+        { "type": "link", "label": "LinkedIn", "url": "https://linkedin.com/in/neelay-chakravarthy", "position": [-6.5, 0, 2.6] },
+        { "type": "link", "label": "Email", "url": "mailto:nkchakra2@gmail.com", "position": [-4, 0, 4.4] }
+      ],
+      "pads": [
+        { "id": "to-goti", "position": [5.5, 0, 2.5], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.2 }
+      ]
+    },
+    {
+      "id": "goti",
+      "title": "Goti — Agentic Deal-Negotiation",
+      "environment": {
+        "skyTop": "#ffc785",
+        "skyBottom": "#fff1da",
+        "fogColor": "#ffe0b0",
+        "fogNear": 42,
+        "fogFar": 135,
+        "hemiSky": "#ffe6c2",
+        "hemiGround": "#b58f63",
+        "hemiIntensity": 1.0,
+        "sunColor": "#ffd086",
+        "sunIntensity": 2.95,
+        "sunPosition": [30, 20, 8],
+        "groundColor": "#ead2a6"
+      },
+      "spawn": { "position": [0, 0, 11], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "negotiation-table", "position": [0, 0, -4] },
+        { "modelId": "agent", "position": [2.4, 0, -4], "rotationY": -1.57 },
+        { "modelId": "agent", "position": [1.7, 0, -2.3], "rotationY": -2.2 },
+        { "modelId": "agent", "position": [0, 0, -1.6], "rotationY": 3.14159 },
+        { "modelId": "agent", "position": [-1.7, 0, -2.3], "rotationY": 2.2 },
+        { "modelId": "agent", "position": [-2.4, 0, -4], "rotationY": 1.57 },
+        { "modelId": "agent", "position": [-1.7, 0, -5.7], "rotationY": 0.9 },
+        { "modelId": "agent", "position": [0, 0, -6.4], "rotationY": 0 },
+        { "modelId": "agent", "position": [1.7, 0, -5.7], "rotationY": -0.9 },
+        { "modelId": "stall", "position": [-8.5, 0, -8], "rotationY": 0.6 },
+        { "modelId": "stall", "position": [8.5, 0, -8], "rotationY": -0.6 },
+        { "modelId": "stall", "position": [-9, 0, 0], "rotationY": 1.0 },
+        { "modelId": "stall", "position": [9, 0, 0], "rotationY": -1.0 },
+        { "modelId": "banner", "position": [-6.5, 0, -6] },
+        { "modelId": "banner", "position": [6.5, 0, -6] },
+        { "modelId": "crate-stack", "position": [-4.5, 0, -9] },
+        { "modelId": "crate-stack", "position": [4.5, 0, -9] }
+      ],
+      "content": [
+        { "type": "title", "text": "Goti", "position": [0, 4.3, -4], "size": 1.35 },
+        { "type": "subtitle", "text": "Agentic Deal-Negotiation Platform", "position": [0, 3.4, -4], "size": 0.48 },
+        { "type": "fact", "text": "AgentForge AI Hackathon  ·  3rd Place  ·  2026", "position": [0, 2.8, -4], "size": 0.32, "color": "#7a4a18" },
+        { "type": "fact", "text": "8 AI reasoners across 4 marketplaces\nPlain-English goal → autonomous, human-approved deals\nCross-negotiation leverage · durable Postgres approvals\nLive SSE progress · Python · FastAPI · Next.js 16 · React 19", "position": [-7.5, 1.95, 3], "size": 0.3, "color": "#5a3410" },
+        { "type": "panel", "caption": "Screenshot — coming soon", "position": [7, 2.2, 1], "rotationY": -0.6 },
+        { "type": "screen", "caption": "Demo video — coming soon", "position": [8.5, 2.2, -4], "rotationY": -1.3 },
+        { "type": "link", "label": "Live demo", "url": "#", "position": [2.8, 0, 6] },
+        { "type": "link", "label": "Code", "url": "#", "position": [-2.8, 0, 6] }
+      ],
+      "pads": [
+        { "id": "to-hub", "position": [0, 0, 7.5], "target": "hub", "label": "←   Hub", "color": "#7fb4ff", "radius": 2.2 }
+      ]
+    }
+  ]
+}

@@ -13,8 +13,9 @@ import * as THREE from 'three';
 export class CameraRig {
   /** Downward tilt of the camera, in degrees (the isometric angle). */
   elevationDeg = 42;
-  /** Horizontal orbit angle, in radians. */
-  azimuth = Math.PI * 0.25;
+  /** Horizontal orbit angle, in radians. 0 = directly behind the unit, which
+   *  centres the (symmetric) biome layouts; right-drag to orbit from there. */
+  azimuth = 0;
   /** Camera-to-focus distance. */
   distance = 24;
 
