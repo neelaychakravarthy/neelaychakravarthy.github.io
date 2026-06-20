@@ -63,6 +63,9 @@ export class Engine {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
     this.renderer.dispose();
-    this.container.removeChild(this.renderer.domElement);
+    this.renderer.forceContextLoss();
+    if (this.renderer.domElement.parentNode === this.container) {
+      this.container.removeChild(this.renderer.domElement);
+    }
   }
 }
