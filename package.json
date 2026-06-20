@@ -1,0 +1,23 @@
+{
+  "name": "portfolio",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Game-like explorable WebGL/Three.js portfolio — Phase 0 spike (click-to-move + isometric camera).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "lil-gui": "^0.20.0",
+    "stats.js": "^0.17.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "@types/stats.js": "^0.17.3",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  }
+}
