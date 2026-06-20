@@ -30,7 +30,7 @@ export interface StructureConfig {
   scale?: number;
 }
 
-export type ContentKind = 'title' | 'subtitle' | 'fact' | 'link' | 'panel' | 'screen';
+export type ContentKind = 'title' | 'subtitle' | 'fact' | 'link' | 'panel' | 'screen' | 'board';
 
 export interface ContentConfig {
   type: ContentKind;
@@ -45,6 +45,13 @@ export interface ContentConfig {
   url?: string;
   /** panel / screen placeholder caption */
   caption?: string;
+  /** board: a consolidated, readable info panel */
+  heading?: string;
+  subheading?: string;
+  badge?: string;
+  lines?: string[];
+  accent?: string;
+  width?: number;
 }
 
 export interface PadConfig {

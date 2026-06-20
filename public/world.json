@@ -10,8 +10,8 @@
         "skyTop": "#a9d4ff",
         "skyBottom": "#fbfdff",
         "fogColor": "#dcebfa",
-        "fogNear": 50,
-        "fogFar": 150,
+        "fogNear": 55,
+        "fogFar": 165,
         "hemiSky": "#dff0ff",
         "hemiGround": "#c2cdd6",
         "hemiIntensity": 1.1,
@@ -21,29 +21,39 @@
         "groundColor": "#e7edf4"
       },
       "audio": { "ambientRoot": 261.63, "ambientChord": [0, 7, 12, 16, 19], "ambientWave": "sine", "ambientCutoff": 1200, "ambientGain": 0.16 },
-      "spawn": { "position": [0, 0, 11], "rotationY": 3.14159 },
+      "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
-        { "modelId": "plaza", "position": [0, 0, -3] },
-        { "modelId": "monument", "position": [0, 0, -6] },
-        { "modelId": "pillar", "position": [-7, 0, -6] },
-        { "modelId": "pillar", "position": [7, 0, -6] },
-        { "modelId": "pillar", "position": [-9, 0, 1] },
-        { "modelId": "pillar", "position": [9, 0, 1] },
-        { "modelId": "planter", "position": [-4.5, 0, -9] },
-        { "modelId": "planter", "position": [4.5, 0, -9] }
+        { "modelId": "plaza", "position": [0, 0, -2] },
+        { "modelId": "monument", "position": [0, 0, -7.5] },
+        { "modelId": "gateway", "position": [-8.5, 0, 1], "rotationY": 0.35 },
+        { "modelId": "gateway", "position": [8.5, 0, 1], "rotationY": -0.35 },
+        { "modelId": "pillar", "position": [-11.5, 0, -7] },
+        { "modelId": "pillar", "position": [11.5, 0, -7] },
+        { "modelId": "pillar", "position": [-12.5, 0, 4] },
+        { "modelId": "pillar", "position": [12.5, 0, 4] },
+        { "modelId": "planter", "position": [-5.5, 0, -10.5] },
+        { "modelId": "planter", "position": [5.5, 0, -10.5] }
       ],
       "content": [
-        { "type": "title", "text": "Neelay Chakravarthy", "position": [0, 3.5, -3], "size": 1.05 },
-        { "type": "subtitle", "text": "AI Engineer  ·  Agentic AI & Full-Stack", "position": [0, 2.6, -3], "size": 0.46 },
-        { "type": "fact", "text": "AI Engineer @ TrustLogix — MCP servers, multi-agent systems, RAG", "position": [0, 2.0, -3], "size": 0.3 },
-        { "type": "fact", "text": "B.S. Computer Science · Santa Clara University '24", "position": [0, 1.55, -3], "size": 0.3 },
-        { "type": "link", "label": "GitHub", "url": "https://github.com/neelaychakravarthy", "position": [-3.2, 0, -1] },
-        { "type": "link", "label": "LinkedIn", "url": "https://linkedin.com/in/neelay-chakravarthy", "position": [0, 0, -1] },
-        { "type": "link", "label": "Email", "url": "mailto:nkchakra2@gmail.com", "position": [3.2, 0, -1] }
+        {
+          "type": "board",
+          "position": [0, 2.8, -5],
+          "width": 7.2,
+          "accent": "#7fb4ff",
+          "heading": "Neelay Chakravarthy",
+          "subheading": "AI Engineer  ·  Agentic AI & Full-Stack",
+          "lines": [
+            "AI Engineer @ TrustLogix — MCP servers, multi-agent systems, RAG",
+            "B.S. Computer Science · Santa Clara University '24"
+          ]
+        },
+        { "type": "link", "label": "GitHub", "url": "https://github.com/neelaychakravarthy", "position": [-3.6, 0, 4.5] },
+        { "type": "link", "label": "LinkedIn", "url": "https://linkedin.com/in/neelay-chakravarthy", "position": [0, 0, 5.2] },
+        { "type": "link", "label": "Email", "url": "mailto:nkchakra2@gmail.com", "position": [3.6, 0, 4.5] }
       ],
       "pads": [
-        { "id": "to-sidekick", "position": [-6.5, 0, 2], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.2 },
-        { "id": "to-goti", "position": [6.5, 0, 2], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.2 }
+        { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },
+        { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 }
       ]
     },
     {
@@ -53,8 +63,8 @@
         "skyTop": "#ffc785",
         "skyBottom": "#fff1da",
         "fogColor": "#ffe0b0",
-        "fogNear": 42,
-        "fogFar": 135,
+        "fogNear": 48,
+        "fogFar": 150,
         "hemiSky": "#ffe6c2",
         "hemiGround": "#b58f63",
         "hemiIntensity": 1.0,
@@ -64,38 +74,56 @@
         "groundColor": "#ead2a6"
       },
       "audio": { "ambientRoot": 196.0, "ambientChord": [0, 7, 10, 15, 19], "ambientWave": "triangle", "ambientCutoff": 820, "ambientGain": 0.16 },
-      "spawn": { "position": [0, 0, 11], "rotationY": 3.14159 },
+      "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
       "structures": [
-        { "modelId": "negotiation-table", "position": [0, 0, -4] },
-        { "modelId": "agent", "position": [2.4, 0, -4], "rotationY": -1.57 },
-        { "modelId": "agent", "position": [1.7, 0, -2.3], "rotationY": -2.2 },
-        { "modelId": "agent", "position": [0, 0, -1.6], "rotationY": 3.14159 },
-        { "modelId": "agent", "position": [-1.7, 0, -2.3], "rotationY": 2.2 },
-        { "modelId": "agent", "position": [-2.4, 0, -4], "rotationY": 1.57 },
-        { "modelId": "agent", "position": [-1.7, 0, -5.7], "rotationY": 0.9 },
-        { "modelId": "agent", "position": [0, 0, -6.4], "rotationY": 0 },
-        { "modelId": "agent", "position": [1.7, 0, -5.7], "rotationY": -0.9 },
-        { "modelId": "stall", "position": [-8.5, 0, -8], "rotationY": 0.6 },
-        { "modelId": "stall", "position": [8.5, 0, -8], "rotationY": -0.6 },
-        { "modelId": "stall", "position": [-9, 0, 0], "rotationY": 1.0 },
-        { "modelId": "stall", "position": [9, 0, 0], "rotationY": -1.0 },
-        { "modelId": "banner", "position": [-6.5, 0, -6] },
-        { "modelId": "banner", "position": [6.5, 0, -6] },
-        { "modelId": "crate-stack", "position": [-4.5, 0, -9] },
-        { "modelId": "crate-stack", "position": [4.5, 0, -9] }
+        { "modelId": "plaza", "position": [0, 0, -3] },
+        { "modelId": "negotiation-table", "position": [0, 0, -3] },
+        { "modelId": "agent", "position": [2.6, 0, -3], "rotationY": -1.57 },
+        { "modelId": "agent", "position": [1.84, 0, -1.16], "rotationY": -2.36 },
+        { "modelId": "agent", "position": [0, 0, -0.4], "rotationY": 3.14159 },
+        { "modelId": "agent", "position": [-1.84, 0, -1.16], "rotationY": 2.36 },
+        { "modelId": "agent", "position": [-2.6, 0, -3], "rotationY": 1.57 },
+        { "modelId": "agent", "position": [-1.84, 0, -4.84], "rotationY": 0.785 },
+        { "modelId": "agent", "position": [0, 0, -5.6], "rotationY": 0 },
+        { "modelId": "agent", "position": [1.84, 0, -4.84], "rotationY": -0.785 },
+        { "modelId": "stall", "position": [-6.8, 0, 2], "rotationY": -1.45 },
+        { "modelId": "stall", "position": [-6.8, 0, -2], "rotationY": -1.57 },
+        { "modelId": "stall", "position": [-6.8, 0, -6], "rotationY": -1.7 },
+        { "modelId": "stall", "position": [6.8, 0, 2], "rotationY": 1.45 },
+        { "modelId": "stall", "position": [6.8, 0, -2], "rotationY": 1.57 },
+        { "modelId": "stall", "position": [6.8, 0, -6], "rotationY": 1.7 },
+        { "modelId": "banner", "position": [-3.8, 0, 6.5] },
+        { "modelId": "banner", "position": [3.8, 0, 6.5] },
+        { "modelId": "lamppost", "position": [-3.6, 0, 2.5] },
+        { "modelId": "lamppost", "position": [3.6, 0, 2.5] },
+        { "modelId": "lamppost", "position": [-3.6, 0, -4] },
+        { "modelId": "lamppost", "position": [3.6, 0, -4] },
+        { "modelId": "crate-stack", "position": [-9, 0, -1] },
+        { "modelId": "crate-stack", "position": [9, 0, -1] }
       ],
       "content": [
-        { "type": "title", "text": "Goti", "position": [0, 4.3, -4], "size": 1.35 },
-        { "type": "subtitle", "text": "Agentic Deal-Negotiation Platform", "position": [0, 3.4, -4], "size": 0.48 },
-        { "type": "fact", "text": "AgentForge AI Hackathon  ·  3rd Place  ·  2026", "position": [0, 2.8, -4], "size": 0.32, "color": "#7a4a18" },
-        { "type": "fact", "text": "8 AI reasoners across 4 marketplaces\nPlain-English goal → autonomous, human-approved deals\nCross-negotiation leverage · durable Postgres approvals\nLive SSE progress · Python · FastAPI · Next.js 16 · React 19", "position": [-7.5, 1.95, 3], "size": 0.3, "color": "#5a3410" },
-        { "type": "panel", "caption": "Screenshot — coming soon", "position": [7, 2.2, 1], "rotationY": -0.6 },
-        { "type": "screen", "caption": "Demo video — coming soon", "position": [8.5, 2.2, -4], "rotationY": -1.3 },
-        { "type": "link", "label": "Live demo", "url": "#", "position": [2.8, 0, 6] },
-        { "type": "link", "label": "Code", "url": "#", "position": [-2.8, 0, 6] }
+        {
+          "type": "board",
+          "position": [0, 3.2, -8],
+          "width": 7.6,
+          "accent": "#ffb056",
+          "heading": "Goti",
+          "subheading": "Agentic Deal-Negotiation Platform",
+          "badge": "AgentForge AI Hackathon  ·  3rd Place  ·  2026",
+          "lines": [
+            "8 AI reasoners negotiating across 4 marketplaces",
+            "Plain-English goal → autonomous, human-approved deals",
+            "Cross-negotiation leverage · durable Postgres approvals",
+            "Live SSE progress · Python · FastAPI · Next.js 16 · React 19"
+          ]
+        },
+        { "type": "panel", "caption": "Screenshot — coming soon", "position": [-9.5, 2.4, -3], "rotationY": 0.7 },
+        { "type": "screen", "caption": "Demo video — coming soon", "position": [9.5, 2.4, -3], "rotationY": -0.7 },
+        { "type": "link", "label": "Live demo", "url": "#", "position": [3, 0, 9] },
+        { "type": "link", "label": "Code", "url": "#", "position": [-3, 0, 9] }
       ],
       "pads": [
-        { "id": "to-hub", "position": [0, 0, 7.5], "target": "hub", "label": "←   Hub", "color": "#7fb4ff", "radius": 2.2 }
+        { "id": "to-hub", "position": [-8.5, 0, 9.5], "target": "hub", "label": "←   Hub", "color": "#7fb4ff", "radius": 2.4 }
       ]
     },
     {
@@ -105,8 +133,8 @@
         "skyTop": "#141d3a",
         "skyBottom": "#46618f",
         "fogColor": "#2b3a63",
-        "fogNear": 42,
-        "fogFar": 135,
+        "fogNear": 48,
+        "fogFar": 150,
         "hemiSky": "#9fc2ff",
         "hemiGround": "#2a3550",
         "hemiIntensity": 0.95,
@@ -116,37 +144,49 @@
         "groundColor": "#2c3550"
       },
       "audio": { "ambientRoot": 220.0, "ambientChord": [0, 3, 7, 10, 14], "ambientWave": "sine", "ambientCutoff": 660, "ambientGain": 0.15 },
-      "spawn": { "position": [0, 0, 11], "rotationY": 3.14159 },
+      "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
       "structures": [
-        { "modelId": "hub-core", "position": [0, 0, -4] },
-        { "modelId": "platform-node", "position": [-4, 0, -2], "rotationY": 0.5 },
-        { "modelId": "platform-node", "position": [4, 0, -2], "rotationY": -0.5 },
-        { "modelId": "pipeline-gate", "position": [-7.5, 0, -6], "rotationY": 0.35 },
-        { "modelId": "pipeline-gate", "position": [7.5, 0, -6], "rotationY": -0.35 },
-        { "modelId": "memory-crystal", "position": [-3, 0, -7.5] },
-        { "modelId": "memory-crystal", "position": [3, 0, -7.5] },
-        { "modelId": "memory-crystal", "position": [0, 0, -8.5] },
-        { "modelId": "chat-bubble", "position": [-6, 0, -1] },
-        { "modelId": "chat-bubble", "position": [6, 0, -1] },
-        { "modelId": "chat-bubble", "position": [-5.5, 0, 2.5] },
-        { "modelId": "chat-bubble", "position": [5.5, 0, 2.5] },
-        { "modelId": "chat-bubble", "position": [-2.5, 0, -5.5] },
-        { "modelId": "chat-bubble", "position": [2.5, 0, -5.5] },
-        { "modelId": "lock", "position": [-8.5, 0, -1.5] },
-        { "modelId": "lock", "position": [8.5, 0, -1.5] }
+        { "modelId": "hub-core", "position": [0, 0, -8] },
+        { "modelId": "hero", "position": [-1.5, 0, -2.5] },
+        { "modelId": "sidekick-bot", "position": [1.4, 0, -2.3] },
+        { "modelId": "big-phone", "position": [-7.5, 0, -3.5], "rotationY": 0.45 },
+        { "modelId": "big-phone", "position": [7.5, 0, -3.5], "rotationY": -0.45 },
+        { "modelId": "pipeline-gate", "position": [-3.6, 0, -9.5] },
+        { "modelId": "pipeline-gate", "position": [3.6, 0, -9.5] },
+        { "modelId": "memory-crystal", "position": [9, 0, 1.5] },
+        { "modelId": "memory-crystal", "position": [9.5, 0, -0.5] },
+        { "modelId": "memory-crystal", "position": [8.2, 0, 3] },
+        { "modelId": "lock", "position": [-9, 0, 1] },
+        { "modelId": "lock", "position": [-9.5, 0, -1] },
+        { "modelId": "chat-bubble", "position": [-5, 0, 1.5] },
+        { "modelId": "chat-bubble", "position": [5, 0, 1.5] },
+        { "modelId": "chat-bubble", "position": [-6.5, 0, -6.5] },
+        { "modelId": "chat-bubble", "position": [6.5, 0, -6.5] }
       ],
       "content": [
-        { "type": "title", "text": "Sidekick", "position": [0, 4.3, -4], "size": 1.35, "color": "#eaf2ff" },
-        { "type": "subtitle", "text": "Group-Chat AI Agent", "position": [0, 3.4, -4], "size": 0.48, "color": "#cdddf2" },
-        { "type": "fact", "text": "Global Eazo Creator Hackathon  ·  Regional Winner  ·  2026", "position": [0, 2.8, -4], "size": 0.32, "color": "#9fc0e8" },
-        { "type": "fact", "text": "Telegram + iMessage group-chat agent\nTwo-stage analyzer → executor pipeline\nPer-group semantic memory (Voyage embeddings)\nAES-256-GCM key encryption · shipped on Vercel\nNext.js · Inngest · Anthropic Claude", "position": [-7.5, 1.95, 3], "size": 0.3, "color": "#cdddf2" },
-        { "type": "panel", "caption": "Screenshot — coming soon", "position": [7, 2.2, 1], "rotationY": -0.6 },
-        { "type": "screen", "caption": "Demo video — coming soon", "position": [8.5, 2.2, -4], "rotationY": -1.3 },
-        { "type": "link", "label": "Live demo", "url": "#", "position": [2.8, 0, 6] },
-        { "type": "link", "label": "Code", "url": "#", "position": [-2.8, 0, 6] }
+        {
+          "type": "board",
+          "position": [0, 3.4, -5.5],
+          "width": 7.6,
+          "accent": "#5ad1ff",
+          "heading": "Sidekick",
+          "subheading": "Group-Chat AI Agent",
+          "badge": "Global Eazo Creator Hackathon  ·  Regional Winner  ·  2026",
+          "lines": [
+            "Telegram + iMessage group-chat agent",
+            "Two-stage analyzer → executor pipeline",
+            "Per-group semantic memory (Voyage embeddings)",
+            "AES-256-GCM key encryption · shipped on Vercel",
+            "Next.js · Inngest · Anthropic Claude"
+          ]
+        },
+        { "type": "panel", "caption": "Screenshot — coming soon", "position": [-10, 2.4, -2.5], "rotationY": 0.7 },
+        { "type": "screen", "caption": "Demo video — coming soon", "position": [10, 2.4, -2.5], "rotationY": -0.7 },
+        { "type": "link", "label": "Live demo", "url": "#", "position": [3, 0, 9] },
+        { "type": "link", "label": "Code", "url": "#", "position": [-3, 0, 9] }
       ],
       "pads": [
-        { "id": "to-hub", "position": [0, 0, 7.5], "target": "hub", "label": "←   Hub", "color": "#ffb056", "radius": 2.2 }
+        { "id": "to-hub", "position": [8.5, 0, 9.5], "target": "hub", "label": "Hub   →", "color": "#ffb056", "radius": 2.4 }
       ]
     }
   ]

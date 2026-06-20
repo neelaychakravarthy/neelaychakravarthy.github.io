@@ -155,6 +155,7 @@ async function boot() {
   const cam = gui.addFolder('Camera');
   cam.add(rig, 'distance', rig.minDistance, rig.maxDistance, 1).listen();
   cam.add(rig, 'elevationDeg', 15, 75, 1);
+  cam.add(rig, 'targetHeight', 0, 4, 0.1);
   cam.add(rig, 'followRate', 1, 16, 0.5);
   gui.close();
 

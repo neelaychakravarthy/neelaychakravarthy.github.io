@@ -244,6 +244,91 @@ export class AssetRegistry {
       g.add(post, body, shackle, hole);
       return g;
     },
+
+    // ---------- shared / thematic set pieces ----------
+    gateway: () => {
+      const g = new THREE.Group();
+      const stone = std('#d2dae4');
+      for (const sx of [-1, 1]) {
+        const post = mesh(new THREE.BoxGeometry(0.5, 4.0, 0.5), stone);
+        post.position.set(sx * 1.7, 2.0, 0);
+        g.add(post);
+      }
+      const top = mesh(new THREE.BoxGeometry(4.2, 0.6, 0.5), stone);
+      top.position.y = 4.3;
+      const portal = mesh(
+        new THREE.PlaneGeometry(2.9, 3.7),
+        std('#cfe6ff', { emissive: '#bfe0ff', emissiveIntensity: 0.4, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+        false,
+      );
+      portal.position.y = 2.05;
+      g.add(top, portal);
+      return g;
+    },
+    'big-phone': (seed) => {
+      const g = new THREE.Group();
+      const screenColor = ['#3ddc84', '#4aa3ff'][seed % 2]; // iMessage green / Telegram blue
+      const stand = mesh(new THREE.BoxGeometry(1.7, 0.4, 1.3), std('#2a3550'));
+      stand.position.y = 0.2;
+      const body = mesh(new THREE.BoxGeometry(3.0, 5.6, 0.45), std('#10141d', { roughness: 0.4 }));
+      body.position.y = 3.2;
+      const screen = mesh(
+        new THREE.PlaneGeometry(2.55, 5.0),
+        std('#0a0f16', { emissive: screenColor, emissiveIntensity: 0.16, roughness: 0.3 }),
+        false,
+      );
+      screen.position.set(0, 3.3, 0.24);
+      g.add(stand, body, screen);
+      // chat bubbles on the screen
+      for (let i = 0; i < 4; i++) {
+        const left = i % 2 === 0;
+        const incoming = left;
+        const bub = mesh(
+          new THREE.BoxGeometry(1.5, 0.62, 0.06),
+          std(incoming ? '#e6edf5' : screenColor, { emissive: incoming ? '#000000' : screenColor, emissiveIntensity: incoming ? 0 : 0.5, roughness: 0.4 }),
+          false,
+        );
+        bub.position.set(left ? -0.45 : 0.45, 4.7 - i * 0.9, 0.27);
+        g.add(bub);
+      }
+      return g;
+    },
+    hero: () => {
+      const g = new THREE.Group();
+      const body = mesh(new THREE.CapsuleGeometry(0.5, 1.0, 6, 12), std('#e8533d', { roughness: 0.5 }));
+      body.position.y = 1.1;
+      const head = mesh(new THREE.SphereGeometry(0.42, 16, 12), std('#ffd9cf', { roughness: 0.5 }));
+      head.position.y = 2.15;
+      const cape = mesh(new THREE.BoxGeometry(1.0, 1.4, 0.12), std('#c33a27', { roughness: 0.55 }));
+      cape.position.set(0, 1.35, -0.42);
+      g.add(body, head, cape);
+      return g;
+    },
+    'sidekick-bot': () => {
+      const g = new THREE.Group();
+      const body = mesh(new THREE.SphereGeometry(0.42, 16, 14), std('#3fe0c8', { emissive: '#19b59c', emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.2 }), false);
+      body.position.y = 1.0;
+      const eye = mesh(new THREE.SphereGeometry(0.13, 10, 10), std('#0e1726'), false);
+      eye.position.set(0, 1.05, 0.36);
+      const antenna = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6), std('#2c3440'));
+      antenna.position.y = 1.5;
+      const tip = mesh(new THREE.SphereGeometry(0.08, 8, 8), std('#5ad1ff', { emissive: '#5ad1ff', emissiveIntensity: 0.95 }), false);
+      tip.position.y = 1.7;
+      g.add(body, eye, antenna, tip);
+      g.userData.billboard = true; // keep the bot's eye on the visitor
+      return g;
+    },
+    lamppost: () => {
+      const g = new THREE.Group();
+      const pole = mesh(new THREE.CylinderGeometry(0.1, 0.14, 3.2, 8), std('#5a4632'));
+      pole.position.y = 1.6;
+      const arm = mesh(new THREE.BoxGeometry(0.7, 0.1, 0.1), std('#5a4632'));
+      arm.position.set(0.3, 3.2, 0);
+      const lamp = mesh(new THREE.SphereGeometry(0.22, 10, 10), std('#ffe6a8', { emissive: '#ffcf6b', emissiveIntensity: 0.95 }), false);
+      lamp.position.set(0.6, 3.1, 0);
+      g.add(pole, arm, lamp);
+      return g;
+    },
   };
 
   create(modelId: string, seed = 0): THREE.Object3D {

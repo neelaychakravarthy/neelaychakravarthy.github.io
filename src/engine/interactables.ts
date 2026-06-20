@@ -47,7 +47,103 @@ export function makeContent(c: ContentConfig): THREE.Object3D {
       return makePanel(c, false);
     case 'screen':
       return makePanel(c, true);
+    case 'board':
+      return makeBoard(c);
   }
+}
+
+/** A rounded-rectangle plane geometry centred on the origin. */
+function roundedRect(w: number, h: number, r: number): THREE.ShapeGeometry {
+  const s = new THREE.Shape();
+  const x = -w / 2;
+  const y = -h / 2;
+  s.moveTo(x + r, y);
+  s.lineTo(x + w - r, y);
+  s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r);
+  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h);
+  s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r);
+  s.quadraticCurveTo(x, y, x + r, y);
+  return new THREE.ShapeGeometry(s);
+}
+
+function panelMat(color: THREE.ColorRepresentation, opacity: number) {
+  return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
+}
+
+/**
+ * makeBoard — a consolidated, always-legible info panel: a semi-transparent
+ * rounded backing (unlit, so it reads the same in any biome) with a typographic
+ * stack (heading / subheading / badge / facts) and an accent bar. Billboards.
+ */
+function makeBoard(c: ContentConfig): THREE.Object3D {
+  const g = new THREE.Group();
+  g.position.set(...c.position);
+  if (c.rotationY) g.rotation.y = c.rotationY;
+
+  const W = c.width ?? 7.0;
+  const pad = 0.5;
+  const accent = c.accent ?? '#9fb4ff';
+  const lines = c.lines ?? [];
+
+  const headingSize = 0.56;
+  const subSize = 0.33;
+  const badgeSize = 0.26;
+  const lineSize = 0.26;
+  const lineStep = lineSize * 1.55;
+
+  let contentH = headingSize * 1.3;
+  if (c.subheading) contentH += subSize * 1.6;
+  if (c.badge) contentH += badgeSize * 1.8;
+  contentH += 0.3;
+  contentH += lines.length * lineStep;
+  const H = contentH + pad * 2;
+
+  const border = new THREE.Mesh(roundedRect(W + 0.14, H + 0.14, 0.46), panelMat(accent, 0.28));
+  border.position.z = -0.06;
+  border.renderOrder = -3;
+  const backing = new THREE.Mesh(roundedRect(W, H, 0.4), panelMat('#0b1320', 0.58));
+  backing.position.z = -0.04;
+  backing.renderOrder = -2;
+  const bar = new THREE.Mesh(roundedRect(W - 0.5, 0.09, 0.04), panelMat(accent, 0.9));
+  bar.position.set(0, H / 2 - 0.3, 0);
+  g.add(border, backing, bar);
+
+  let y = H / 2 - pad - headingSize * 0.6;
+  const place = (text: string, size: number, color: THREE.ColorRepresentation) => {
+    const t = makeTroika(text, size, color);
+    t.maxWidth = W - pad * 2;
+    t.position.set(0, y, 0.02);
+    t.sync();
+    g.add(t);
+  };
+
+  place(c.heading ?? '', headingSize, '#ffffff');
+  y -= headingSize * 1.3;
+  if (c.subheading) {
+    place(c.subheading, subSize, '#d7e2f0');
+    y -= subSize * 1.6;
+  }
+  if (c.badge) {
+    place(c.badge, badgeSize, accent);
+    y -= badgeSize * 1.8;
+  }
+  y -= 0.18;
+
+  if (lines.length) {
+    const body = makeTroika(lines.join('\n'), lineSize, '#ccd7e6');
+    body.anchorY = 'top';
+    body.lineHeight = 1.55;
+    body.maxWidth = W - pad * 2;
+    body.position.set(0, y, 0.02);
+    body.sync();
+    g.add(body);
+  }
+
+  g.userData.billboard = true;
+  return g;
 }
 
 function makeText(c: ContentConfig): THREE.Object3D {

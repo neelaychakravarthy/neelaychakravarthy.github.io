@@ -17,7 +17,11 @@ export class CameraRig {
    *  centres the (symmetric) biome layouts; right-drag to orbit from there. */
   azimuth = 0;
   /** Camera-to-focus distance. */
-  distance = 24;
+  distance = 26;
+
+  /** Raise the look-at point above the unit so info boards sit comfortably in
+   *  frame and the empty foreground shrinks. */
+  targetHeight = 2.35;
 
   minDistance = 10;
   maxDistance = 55;
@@ -25,6 +29,7 @@ export class CameraRig {
   followRate = 6;
 
   private readonly target = new THREE.Vector3();
+  private readonly lookTarget = new THREE.Vector3();
   private readonly desired = new THREE.Vector3();
   private readonly offset = new THREE.Vector3();
   private dragging = false;
@@ -85,16 +90,17 @@ export class CameraRig {
   update(dt: number, focus: THREE.Vector3) {
     this.computeOffset(this.offset);
     this.desired.copy(focus).add(this.offset);
+    this.lookTarget.set(focus.x, focus.y + this.targetHeight, focus.z);
 
     if (!this.initialised) {
       // Snap into place on the first frame so we don't fly in from the origin.
       this.camera.position.copy(this.desired);
-      this.target.copy(focus);
+      this.target.copy(this.lookTarget);
       this.initialised = true;
     } else {
       const k = 1 - Math.exp(-this.followRate * dt);
       this.camera.position.lerp(this.desired, k);
-      this.target.lerp(focus, k);
+      this.target.lerp(this.lookTarget, k);
     }
     this.camera.lookAt(this.target);
   }
