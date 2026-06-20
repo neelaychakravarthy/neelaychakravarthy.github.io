@@ -155,6 +155,95 @@ export class AssetRegistry {
       }
       return g;
     },
+
+    // ---------- sidekick (comms / chat network) ----------
+    'hub-core': () => {
+      const g = new THREE.Group();
+      const base = mesh(new THREE.CylinderGeometry(1.3, 1.6, 0.4, 12), std('#2a3550'));
+      base.position.y = 0.2;
+      const pillar = mesh(new THREE.CylinderGeometry(0.45, 0.55, 1.4, 10), std('#39466b'));
+      pillar.position.y = 1.05;
+      const core = mesh(new THREE.IcosahedronGeometry(1.05, 0), std('#3fe0c8', { emissive: '#19b59c', emissiveIntensity: 0.85, roughness: 0.25, metalness: 0.2 }));
+      core.position.y = 2.75;
+      core.userData.spinSpeed = 0.5;
+      const ring = mesh(new THREE.TorusGeometry(1.5, 0.06, 8, 40), std('#5ad1ff', { emissive: '#5ad1ff', emissiveIntensity: 0.85 }), false);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 2.75;
+      ring.userData.spinSpeed = -0.8;
+      g.add(base, pillar, core, ring);
+      return g;
+    },
+    'platform-node': (seed) => {
+      const g = new THREE.Group();
+      const c = ['#4aa3ff', '#3ddc84'][seed % 2]; // telegram blue / imessage green
+      const base = mesh(new THREE.BoxGeometry(1.8, 0.3, 1.1), std('#2a3550'));
+      base.position.y = 0.15;
+      const post = mesh(new THREE.BoxGeometry(0.3, 1.6, 0.3), std('#39466b'));
+      post.position.y = 1.0;
+      const screen = mesh(new THREE.BoxGeometry(1.5, 1.1, 0.16), std('#10151c'));
+      screen.position.y = 2.1;
+      const glow = mesh(new THREE.PlaneGeometry(1.2, 0.85), std(c, { emissive: c, emissiveIntensity: 0.85, roughness: 0.4 }), false);
+      glow.position.set(0, 2.1, 0.1);
+      g.add(base, post, screen, glow);
+      return g;
+    },
+    'pipeline-gate': () => {
+      const g = new THREE.Group();
+      const left = mesh(new THREE.BoxGeometry(0.35, 3.0, 0.35), std('#39466b'));
+      left.position.set(-1.3, 1.5, 0);
+      const right = mesh(new THREE.BoxGeometry(0.35, 3.0, 0.35), std('#39466b'));
+      right.position.set(1.3, 1.5, 0);
+      const beam = mesh(new THREE.BoxGeometry(2.95, 0.4, 0.35), std('#39466b'));
+      beam.position.y = 3.2;
+      const bar = mesh(new THREE.BoxGeometry(2.4, 0.12, 0.12), std('#6f8fff', { emissive: '#6f8fff', emissiveIntensity: 0.85 }), false);
+      bar.position.y = 2.9;
+      g.add(left, right, beam, bar);
+      return g;
+    },
+    'memory-crystal': () => {
+      const g = new THREE.Group();
+      const base = mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.4, 6), std('#2a3550'));
+      base.position.y = 0.2;
+      const crystal = mesh(new THREE.OctahedronGeometry(0.7, 0), std('#b06fff', { emissive: '#8a3fff', emissiveIntensity: 0.75, roughness: 0.2, metalness: 0.2 }));
+      crystal.position.y = 1.5;
+      crystal.userData.spinSpeed = 0.7;
+      g.add(base, crystal);
+      return g;
+    },
+    'chat-bubble': (seed) => {
+      const g = new THREE.Group();
+      const c = ['#5ad1ff', '#8a7dff', '#5be0c0', '#ff8ac0'][seed % 4];
+      const h = 1.7 + (seed % 3) * 0.55;
+      const mat = std(c, { emissive: c, emissiveIntensity: 0.4, roughness: 0.5 });
+      const body = mesh(new THREE.SphereGeometry(0.6, 18, 14), mat, false);
+      body.scale.set(1.15, 0.85, 0.7);
+      body.position.y = h;
+      const tail = mesh(new THREE.ConeGeometry(0.16, 0.34, 4), mat, false);
+      tail.position.set(-0.18, h - 0.55, 0.1);
+      tail.rotation.z = 0.35;
+      for (let i = -1; i <= 1; i++) {
+        const dot = mesh(new THREE.SphereGeometry(0.08, 8, 8), std('#0e1726'), false);
+        dot.position.set(i * 0.22, h, 0.43);
+        g.add(dot);
+      }
+      g.add(body, tail);
+      g.userData.billboard = true; // face the camera like a real chat bubble
+      return g;
+    },
+    lock: () => {
+      const g = new THREE.Group();
+      const post = mesh(new THREE.BoxGeometry(0.2, 1.0, 0.2), std('#39466b'));
+      post.position.y = 0.5;
+      const body = mesh(new THREE.BoxGeometry(0.7, 0.6, 0.3), std('#9fb0c8', { metalness: 0.3, roughness: 0.4 }));
+      body.position.y = 1.35;
+      const shackle = mesh(new THREE.TorusGeometry(0.24, 0.07, 8, 16, Math.PI), std('#c7d2e0', { metalness: 0.3 }), false);
+      shackle.position.y = 1.62;
+      const hole = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.32, 8), std('#3fe0c8', { emissive: '#3fe0c8', emissiveIntensity: 0.7 }), false);
+      hole.rotation.x = Math.PI / 2;
+      hole.position.set(0, 1.32, 0.16);
+      g.add(post, body, shackle, hole);
+      return g;
+    },
   };
 
   create(modelId: string, seed = 0): THREE.Object3D {

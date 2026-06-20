@@ -11,6 +11,7 @@ import { BiomeManager } from './engine/Biome';
 import { TransitionController } from './engine/TransitionController';
 import { InteractionManager } from './engine/InteractionManager';
 import { loadWorld } from './engine/WorldLoader';
+import { AudioManager } from './engine/AudioManager';
 import type { SpawnConfig } from './world/types';
 
 function hideLoader() {
@@ -92,14 +93,25 @@ async function boot() {
 
   let locked = false;
 
+  const audio = new AudioManager();
+  audio.setBiome(start.config.audio);
+  window.addEventListener('pointerdown', () => audio.unlock(), { once: true });
+
   const click = new ClickToMove(engine.camera, engine.renderer.domElement, env.ground, engine.scene, {
     onGround: (p) => {
-      if (!locked) unit.setTarget(p);
+      if (locked) return;
+      audio.unlock();
+      unit.setTarget(p);
+      audio.move();
     },
     getClickables: () => biomes.current?.clickables ?? [],
     onInteract: (obj) => {
+      audio.unlock();
       const url = obj.userData.url as string;
-      if (url && url !== '#') window.open(url, '_blank', 'noopener');
+      if (url && url !== '#') {
+        audio.link();
+        window.open(url, '_blank', 'noopener');
+      }
     },
     isLocked: () => locked,
   });
@@ -108,8 +120,10 @@ async function boot() {
     if (locked || !biomes.current || biomes.current.id === target) return;
     locked = true;
     unit.stop();
+    audio.morph();
     const from = biomes.current;
     const to = biomes.build(target, true);
+    audio.setBiome(to.config.audio);
     const spawn = to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
     transition.morph({
       from,
@@ -143,6 +157,19 @@ async function boot() {
   cam.add(rig, 'elevationDeg', 15, 75, 1);
   cam.add(rig, 'followRate', 1, 16, 0.5);
   gui.close();
+
+  // mute toggle
+  const muteBtn = document.createElement('button');
+  muteBtn.textContent = '🔊';
+  muteBtn.title = 'Mute / unmute';
+  muteBtn.style.cssText =
+    'position:fixed;right:16px;bottom:16px;z-index:30;width:42px;height:42px;border-radius:50%;' +
+    'border:1px solid rgba(255,255,255,.25);background:rgba(20,32,48,.55);backdrop-filter:blur(8px);' +
+    '-webkit-backdrop-filter:blur(8px);color:#fff;font-size:18px;cursor:pointer;line-height:1;';
+  muteBtn.addEventListener('click', () => {
+    muteBtn.textContent = audio.toggleMute() ? '🔇' : '🔊';
+  });
+  document.body.appendChild(muteBtn);
 
   // ---- run ----
   let firstFrame = true;

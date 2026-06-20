@@ -61,6 +61,15 @@ export interface SpawnConfig {
   rotationY?: number;
 }
 
+/** Procedural ambient-pad descriptor (synthesized per biome, crossfaded on morph). */
+export interface AmbientConfig {
+  ambientRoot?: number;
+  ambientChord?: number[];
+  ambientWave?: OscillatorType;
+  ambientCutoff?: number;
+  ambientGain?: number;
+}
+
 export interface BiomeConfig {
   id: string;
   title: string;
@@ -69,7 +78,7 @@ export interface BiomeConfig {
   structures?: StructureConfig[];
   content?: ContentConfig[];
   pads?: PadConfig[];
-  audio?: { ambient?: string };
+  audio?: AmbientConfig;
 }
 
 export interface WorldConfig {
