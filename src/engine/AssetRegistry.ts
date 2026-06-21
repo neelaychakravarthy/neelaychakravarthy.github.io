@@ -125,17 +125,19 @@ export class AssetRegistry {
       g.add(base, shaft, cap);
       return g;
     },
-    planter: () => {
+    planter: (seed) => {
       const g = new THREE.Group();
-      const box = mesh(new THREE.BoxGeometry(1.6, 0.7, 1.6), std('#cdd6df'));
-      box.position.y = 0.35;
-      for (const [dx, dz, h] of [[-0.35, -0.2, 1.2], [0.35, 0.25, 1.5], [0.1, -0.4, 1.0]] as const) {
-        const trunk = mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6), std('#8a5a3b'));
-        trunk.position.set(dx, 0.85, dz);
-        const leaf = mesh(new THREE.ConeGeometry(0.55, h, 8), std('#5fb87a', { roughness: 0.85 }));
-        leaf.position.set(dx, 0.95 + h / 2, dz);
-        g.add(trunk, leaf);
-      }
+      const trunk = mesh(new THREE.CylinderGeometry(0.13, 0.2, 1.2, 7), std('#8a5a3b'));
+      trunk.position.y = 0.6;
+      const foliage = std(['#4fa86c', '#5fb87a', '#69b97e'][seed % 3], { roughness: 0.85 });
+      const c1 = mesh(new THREE.ConeGeometry(1.05, 1.7, 8), foliage);
+      c1.position.y = 1.5;
+      const c2 = mesh(new THREE.ConeGeometry(0.8, 1.35, 8), foliage);
+      c2.position.y = 2.3;
+      const c3 = mesh(new THREE.ConeGeometry(0.52, 1.05, 8), foliage);
+      c3.position.y = 2.95;
+      g.add(trunk, c1, c2, c3);
+      g.rotation.y = Math.random() * Math.PI * 2;
       return g;
     },
 
@@ -387,11 +389,11 @@ export class AssetRegistry {
       const g = new THREE.Group();
       const pole = mesh(new THREE.CylinderGeometry(0.1, 0.14, 3.2, 8), std('#5a4632'));
       pole.position.y = 1.6;
-      const arm = mesh(new THREE.BoxGeometry(0.7, 0.1, 0.1), std('#5a4632'));
-      arm.position.set(0.3, 3.2, 0);
-      const lamp = mesh(new THREE.SphereGeometry(0.22, 10, 10), std('#ffe6a8', { emissive: '#ffcf6b', emissiveIntensity: 0.95 }), false);
-      lamp.position.set(0.6, 3.1, 0);
-      g.add(pole, arm, lamp);
+      const cap = mesh(new THREE.CylinderGeometry(0.05, 0.2, 0.24, 8), std('#3a2e22'));
+      cap.position.y = 3.45;
+      const lamp = mesh(new THREE.SphereGeometry(0.22, 12, 10), std('#ffe6a8', { emissive: '#ffcf6b', emissiveIntensity: 1.0 }), false);
+      lamp.position.y = 3.2;
+      g.add(pole, cap, lamp);
       return g;
     },
 
@@ -551,7 +553,8 @@ export class AssetRegistry {
       for (const sx of [-1, 1]) {
         const goal = waterPoloGoal();
         goal.position.set(sx * (L / 2 - 0.5), 0.27, -W / 4);
-        if (sx > 0) goal.rotation.y = Math.PI;
+        // face down the length of the pool (into the court), nets at the ends
+        goal.rotation.y = sx < 0 ? Math.PI / 2 : -Math.PI / 2;
         g.add(goal);
       }
       const marks = ['#e6533f', '#f0d23f', '#ffffff', '#f0d23f', '#e6533f'];
