@@ -433,17 +433,17 @@
           "width": 8.6,
           "accent": "#ff7a1f",
           "heading": "Chakra",
-          "subheading": "Multi-Tenant BoM & Inventory SaaS",
-          "badge": "Personal Project  ·  Built for the family business  ·  2026",
+          "subheading": "The foundational layer for AI-native manufacturing",
+          "badge": "Personal Project  ·  Built for the family business  ·  2025",
           "lines": [
-            "A bill-of-materials & inventory platform — built for my family’s business",
-            "Grown into a multi-tenant SaaS with session-derived tenant isolation",
-            "Config-driven transactional inventory & consumption engine",
-            "Type-inheritance modeling · CI-enforced 100% test coverage · Sentry",
+            "Built for my family’s manufacturing business — its system of record",
+            "Bill-of-materials, inventory & production modeled as clean, structured data",
+            "Multi-tenant SaaS · tenant isolation · type-inheritance · transactional engine",
+            "That solid data foundation is what lets the business become AI-native",
             "Next.js 16 · Drizzle ORM · Neon Postgres · Auth.js"
           ]
         },
-        { "type": "link", "label": "Live app", "url": "https://chakra-swart.vercel.app", "tooltip": "The live SaaS · Google sign-in  ↗", "position": [0, 0, 9.5] }
+        { "type": "link", "label": "Live app", "url": "https://chakra-swart.vercel.app", "tooltip": "The live SaaS · Google sign-in  ↗", "position": [0, 0, 6.5] }
       ],
       "pads": [
         { "id": "to-hub", "position": [0, 0, 11], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }

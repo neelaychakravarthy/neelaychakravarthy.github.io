@@ -66,9 +66,9 @@ const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
     id: 'chakra',
     lead: ['One more — and this one means the most to me.', "Let's head into Chakra."],
     lines: [
-      'Chakra started as a bill-of-materials and inventory system for my family’s business.',
-      'I grew it into a full multi-tenant SaaS — every organization’s data fully isolated.',
-      'A transactional engine tracks the materials, builds the products, and keeps the books.',
+      'Chakra started as a bill-of-materials and inventory system for my family’s manufacturing business.',
+      'I grew it into a multi-tenant SaaS that models the whole operation as clean, structured data.',
+      'And that’s the real idea — it’s the foundational layer that lets a manufacturer become AI-native.',
     ],
   },
 ];
