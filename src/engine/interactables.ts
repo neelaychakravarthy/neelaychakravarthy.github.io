@@ -155,6 +155,11 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
   layoutNext(0);
 
   g.userData.billboard = true;
+  // focusable: the camera frames this when the unit drives up. Boards billboard,
+  // so they're two-sided (approach from whichever side the unit is on).
+  g.userData.focus = true;
+  g.userData.focusFacing = c.rotationY ?? 0;
+  g.userData.focusOneSided = false;
   return g;
 }
 
@@ -315,6 +320,14 @@ function makePanel(c: ContentConfig, isScreen: boolean): THREE.Object3D {
     }
   }
 
+  // focusable: the camera frames this when the unit drives up. Panels/screens
+  // have a real front (the image/video faces +z local), so they're one-sided.
+  // Aim at the image centre height (cy), not the bounding box — the box includes
+  // the support legs down to the ground, which would drag the look-at too low.
+  g.userData.focus = true;
+  g.userData.focusFacing = c.rotationY ?? 0;
+  g.userData.focusOneSided = true;
+  g.userData.focusCenterY = cy;
   return g;
 }
 

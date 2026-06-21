@@ -36,6 +36,7 @@ export interface BuiltBiome {
   videos: THREE.Object3D[];
   glows: THREE.Object3D[];
   waters: THREE.Object3D[];
+  focusables: THREE.Object3D[];
 }
 
 function buildBiome(
@@ -72,6 +73,7 @@ function buildBiome(
   const videos: THREE.Object3D[] = [];
   const glows: THREE.Object3D[] = [];
   const waters: THREE.Object3D[] = [];
+  const focusables: THREE.Object3D[] = [];
   group.traverse((o) => {
     if (o.userData.url !== undefined) clickables.push(o);
     if (o.userData.billboard) billboards.push(o);
@@ -79,6 +81,7 @@ function buildBiome(
     if (o.userData.gallery) galleries.push(o);
     if (o.userData.video) videos.push(o);
     if (o.userData.water) waters.push(o);
+    if (o.userData.focus) focusables.push(o);
     if (o instanceof THREE.Mesh) {
       const mat = (Array.isArray(o.material) ? o.material[0] : o.material) as THREE.MeshStandardMaterial;
       const e = mat?.emissive;
@@ -109,7 +112,7 @@ function buildBiome(
   }
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {

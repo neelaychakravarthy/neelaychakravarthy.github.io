@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { FocusOverride } from './FocusController';
 
 /**
  * CameraRig — angled isometric-style follow camera.
@@ -35,11 +36,14 @@ export class CameraRig {
   private dragging = false;
   private lastX = 0;
   private initialised = false;
+  /** Resting FOV, restored as focus releases. */
+  private readonly baseFov: number;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
     private dom: HTMLElement,
   ) {
+    this.baseFov = camera.fov;
     dom.addEventListener('wheel', this.onWheel, { passive: false });
     dom.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
@@ -87,10 +91,17 @@ export class CameraRig {
     );
   }
 
-  update(dt: number, focus: THREE.Vector3) {
+  update(dt: number, focus: THREE.Vector3, override?: FocusOverride | null) {
     this.computeOffset(this.offset);
     this.desired.copy(focus).add(this.offset);
     this.lookTarget.set(focus.x, focus.y + this.targetHeight, focus.z);
+
+    // Blend toward a focus pose (driving up to readable content), if any.
+    const w = override ? override.weight : 0;
+    if (override && w > 0.0001) {
+      this.desired.lerp(override.pos, w);
+      this.lookTarget.lerp(override.look, w);
+    }
 
     if (!this.initialised) {
       // Snap into place on the first frame so we don't fly in from the origin.
@@ -103,6 +114,12 @@ export class CameraRig {
       this.target.lerp(this.lookTarget, k);
     }
     this.camera.lookAt(this.target);
+
+    const fov = THREE.MathUtils.lerp(this.baseFov, override ? override.fov : this.baseFov, w);
+    if (Math.abs(this.camera.fov - fov) > 1e-3) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   dispose() {

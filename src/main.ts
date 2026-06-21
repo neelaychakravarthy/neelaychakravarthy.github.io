@@ -7,6 +7,7 @@ import { MorphFX } from './engine/MorphFX';
 import { Atmosphere } from './engine/Atmosphere';
 import { EnvironmentController } from './engine/EnvironmentController';
 import { CameraRig } from './engine/CameraRig';
+import { FocusController } from './engine/FocusController';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
 import { AssetRegistry } from './engine/AssetRegistry';
@@ -161,6 +162,9 @@ async function boot() {
   rig.distance = restDistance + 9;
   gsap.to(rig, { distance: restDistance, duration: 1.8, ease: 'power2.out', delay: 0.15 });
 
+  const focus = new FocusController(engine.camera);
+  focus.setBiome(start.focusables);
+
   const transition = new TransitionController();
   const interaction = new InteractionManager();
   interaction.setBiome(start.pads, unit.position);
@@ -196,6 +200,7 @@ async function boot() {
     if (locked || !biomes.current || biomes.current.id === target) return;
     locked = true;
     unit.stop();
+    focus.reset();
     audio.morph();
     const from = biomes.current;
     const to = biomes.build(target, true);
@@ -217,6 +222,7 @@ async function boot() {
         biomes.dispose(from);
         biomes.current = to;
         interaction.setBiome(to.pads, unit.position);
+        focus.setBiome(to.focusables);
         engine.postfx.setSelection(to.glows);
         locked = false;
       },
@@ -240,6 +246,12 @@ async function boot() {
     cam.add(rig, 'elevationDeg', 15, 75, 1);
     cam.add(rig, 'targetHeight', 0, 4, 0.1);
     cam.add(rig, 'followRate', 1, 16, 0.5);
+    const fc = gui.addFolder('Focus (read-up)');
+    fc.add(focus, 'enabled');
+    fc.add(focus, 'outer', 4, 16, 0.5);
+    fc.add(focus, 'elevationDeg', 0, 42, 1);
+    fc.add(focus, 'focusFov', 20, 50, 1);
+    fc.add(focus, 'margin', 1, 1.8, 0.05);
     gui.close();
   }
 
@@ -274,7 +286,10 @@ async function boot() {
       interaction.update(unit.position, triggerMorph);
     }
     click.update(dt, unit.hasTarget && !locked);
-    rig.update(dt, unit.position);
+    // Engage focus only when parked near content; the moment the unit is driving
+    // (hasTarget), release so the player sees the world and can steer freely.
+    const focusOverride = focus.update(dt, unit.position, !locked && !unit.hasTarget);
+    rig.update(dt, unit.position, focusOverride);
     fx.update(dt);
     atmosphere.update(dt);
     biomes.update(dt, engine.camera, unit.position);
