@@ -32,7 +32,10 @@
         { "modelId": "pillar", "position": [-12.5, 0, 4] },
         { "modelId": "pillar", "position": [12.5, 0, 4] },
         { "modelId": "planter", "position": [-9, 0, -10.5] },
-        { "modelId": "planter", "position": [-2.5, 0, -9] }
+        { "modelId": "planter", "position": [-2.5, 0, -9] },
+        { "modelId": "swimming-pool", "position": [14, 0, 11], "rotationY": -0.35 },
+        { "modelId": "beach", "position": [28, 0, 2] },
+        { "modelId": "ski-mountain", "position": [-16, 0, -52] }
       ],
       "content": [
         {

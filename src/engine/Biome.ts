@@ -35,6 +35,7 @@ export interface BuiltBiome {
   galleries: THREE.Object3D[];
   videos: THREE.Object3D[];
   glows: THREE.Object3D[];
+  waters: THREE.Object3D[];
 }
 
 function buildBiome(
@@ -70,12 +71,14 @@ function buildBiome(
   const galleries: THREE.Object3D[] = [];
   const videos: THREE.Object3D[] = [];
   const glows: THREE.Object3D[] = [];
+  const waters: THREE.Object3D[] = [];
   group.traverse((o) => {
     if (o.userData.url !== undefined) clickables.push(o);
     if (o.userData.billboard) billboards.push(o);
     if (o.userData.spinSpeed) spinners.push(o);
     if (o.userData.gallery) galleries.push(o);
     if (o.userData.video) videos.push(o);
+    if (o.userData.water) waters.push(o);
     if (o instanceof THREE.Mesh) {
       const mat = (Array.isArray(o.material) ? o.material[0] : o.material) as THREE.MeshStandardMaterial;
       const e = mat?.emissive;
@@ -106,7 +109,7 @@ function buildBiome(
   }
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {
@@ -127,6 +130,7 @@ export class BiomeManager {
   current: BuiltBiome | null = null;
   private readonly byId = new Map<string, BiomeConfig>();
   private readonly tmp = new THREE.Vector3();
+  private elapsed = 0;
 
   constructor(
     private scene: THREE.Scene,
@@ -184,6 +188,7 @@ export class BiomeManager {
   update(dt: number, camera: THREE.Camera, unitPos: THREE.Vector3) {
     const b = this.current;
     if (!b) return;
+    this.elapsed += dt;
 
     for (const o of b.billboards) {
       o.getWorldPosition(this.tmp);
@@ -235,6 +240,11 @@ export class BiomeManager {
       const v = o.userData.video as HTMLVideoElement;
       if (near && v.paused) void v.play().catch(() => {});
       else if (!near && !v.paused) v.pause();
+    }
+    for (const o of b.waters) {
+      const mat = (o as THREE.Mesh).material as THREE.Material;
+      const shader = mat.userData.shader as { uniforms: { uTime: { value: number } } } | undefined;
+      if (shader) shader.uniforms.uTime.value = this.elapsed;
     }
   }
 }

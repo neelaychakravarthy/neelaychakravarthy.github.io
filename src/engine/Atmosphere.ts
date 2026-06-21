@@ -111,7 +111,7 @@ class Layer {
     for (let i = 0; i < count; i++) {
       // ring of grass surrounding the central plaza (cleared center)
       const a = Math.random() * Math.PI * 2;
-      const r = 8.5 + Math.pow(Math.random(), 0.7) * 21;
+      const r = 8.5 + Math.pow(Math.random(), 0.7) * 13.5;
       const cx = Math.cos(a) * r;
       const cz = Math.sin(a) * r;
       dummy.position.set(cx + (Math.random() - 0.5) * 0.8, 0, cz + (Math.random() - 0.5) * 0.8);

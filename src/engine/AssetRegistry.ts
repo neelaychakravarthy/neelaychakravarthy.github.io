@@ -20,6 +20,71 @@ function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, cast = true): THRE
   return m;
 }
 
+/** Animated water material (gentle surface ripple). Mark its mesh userData.water
+ *  so BiomeManager ticks the shader's uTime each frame. */
+function makeWater(color: THREE.ColorRepresentation, opacity = 0.9): THREE.MeshStandardMaterial {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.18, metalness: 0.5, transparent: true, opacity });
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = { value: 0 };
+    mat.userData.shader = shader;
+    shader.vertexShader =
+      'uniform float uTime;\n' +
+      shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+         transformed.z += sin(position.x * 0.6 + uTime * 1.4) * 0.06 + sin(position.y * 0.9 + uTime * 1.1) * 0.05;`,
+      );
+  };
+  return mat;
+}
+
+/** A cylinder spanning two points (for cables / struts). */
+function connect(a: THREE.Vector3, b: THREE.Vector3, radius: number, mat: THREE.Material): THREE.Mesh {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, dir.length(), 6), mat);
+  m.castShadow = false;
+  m.position.copy(a).addScaledVector(dir, 0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  return m;
+}
+
+function waterPoloGoal(): THREE.Group {
+  const g = new THREE.Group();
+  const mat = std('#f2f5f8', { roughness: 0.5 });
+  const w = 1.6;
+  const h = 0.85;
+  const l = mesh(new THREE.BoxGeometry(0.08, h, 0.08), mat);
+  l.position.set(-w / 2, h / 2, 0);
+  const r = mesh(new THREE.BoxGeometry(0.08, h, 0.08), mat);
+  r.position.set(w / 2, h / 2, 0);
+  const top = mesh(new THREE.BoxGeometry(w + 0.08, 0.08, 0.08), mat);
+  top.position.set(0, h, 0);
+  const net = mesh(new THREE.PlaneGeometry(w, h), std('#ffffff', { transparent: true, opacity: 0.22, side: THREE.DoubleSide }), false);
+  net.position.set(0, h / 2, -0.22);
+  g.add(l, r, top, net);
+  return g;
+}
+
+function palm(): THREE.Group {
+  const g = new THREE.Group();
+  const trunkMat = std('#9a7b4a');
+  for (let i = 0; i < 5; i++) {
+    const seg = mesh(new THREE.CylinderGeometry(0.12 - i * 0.012, 0.15 - i * 0.012, 0.6, 7), trunkMat);
+    seg.position.set(i * 0.12, 0.3 + i * 0.55, 0);
+    seg.rotation.z = -0.09 * i;
+    g.add(seg);
+  }
+  const leafMat = std('#4f9a52', { side: THREE.DoubleSide });
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const leaf = mesh(new THREE.ConeGeometry(0.22, 2.0, 4), leafMat, false);
+    leaf.position.set(0.55 + Math.cos(a) * 0.5, 3.0, Math.sin(a) * 0.5);
+    leaf.rotation.set(Math.PI / 2.4, a, Math.cos(a) * 0.3);
+    g.add(leaf);
+  }
+  return g;
+}
+
 const WARM_CANOPIES = ['#e8674a', '#f0a93f', '#d9534f', '#e0863a'];
 const AGENT_COLORS = ['#4f86c6', '#5bb8a6', '#8a6fd1', '#d98a4f', '#5aa9e6', '#c2607f', '#5cc08a', '#b59a3f'];
 
@@ -449,6 +514,113 @@ export class AssetRegistry {
         b.rotation.y = (i % 2) * 0.12;
         g.add(b);
         y += 0.16;
+      }
+      return g;
+    },
+
+    // ---------- personal set pieces (hub) ----------
+    'swimming-pool': () => {
+      const g = new THREE.Group();
+      const L = 13;
+      const W = 7;
+      const deckMat = std('#d4dae0', { roughness: 0.9 });
+      const longN = mesh(new THREE.BoxGeometry(L + 1.6, 0.3, 0.8), deckMat);
+      longN.position.set(0, 0.15, W / 2 + 0.4);
+      const longS = mesh(new THREE.BoxGeometry(L + 1.6, 0.3, 0.8), deckMat);
+      longS.position.set(0, 0.15, -W / 2 - 0.4);
+      const shortE = mesh(new THREE.BoxGeometry(0.8, 0.3, W), deckMat);
+      shortE.position.set(L / 2 + 0.4, 0.15, 0);
+      const shortW = mesh(new THREE.BoxGeometry(0.8, 0.3, W), deckMat);
+      shortW.position.set(-L / 2 - 0.4, 0.15, 0);
+      const floor = mesh(new THREE.BoxGeometry(L, 0.1, W), std('#86c8de'));
+      floor.position.y = 0.06;
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(L, W, 26, 16), makeWater('#2f9bd6', 0.85));
+      water.rotation.x = -Math.PI / 2;
+      water.position.y = 0.23;
+      water.userData.water = true;
+      g.add(longN, longS, shortE, shortW, floor, water);
+      // swimming half: lane ropes along the length
+      const ropeCols = ['#f0d23f', '#e6533f', '#f0d23f'];
+      for (let i = 0; i < 3; i++) {
+        const rope = mesh(new THREE.CylinderGeometry(0.05, 0.05, L - 0.3, 6), std(ropeCols[i], { emissive: ropeCols[i], emissiveIntensity: 0.18 }), false);
+        rope.rotation.z = Math.PI / 2;
+        rope.position.set(0, 0.3, 0.85 + i * 0.95);
+        g.add(rope);
+      }
+      // water-polo half: goals at each end + coloured field markers
+      for (const sx of [-1, 1]) {
+        const goal = waterPoloGoal();
+        goal.position.set(sx * (L / 2 - 0.5), 0.27, -W / 4);
+        if (sx > 0) goal.rotation.y = Math.PI;
+        g.add(goal);
+      }
+      const marks = ['#e6533f', '#f0d23f', '#ffffff', '#f0d23f', '#e6533f'];
+      for (let i = 0; i < marks.length; i++) {
+        const m = mesh(new THREE.BoxGeometry(0.24, 0.1, 0.24), std(marks[i], { emissive: marks[i], emissiveIntensity: 0.2 }), false);
+        m.position.set(-L / 2 + 1.3 + (i * (L - 2.6)) / (marks.length - 1), 0.31, -W / 2 + 0.4);
+        g.add(m);
+      }
+      return g;
+    },
+    beach: () => {
+      const g = new THREE.Group();
+      const sand = mesh(new THREE.BoxGeometry(15, 0.25, 42), std('#e8d4a2', { roughness: 1 }));
+      sand.position.set(0, 0.12, 0);
+      sand.receiveShadow = true;
+      const ocean = new THREE.Mesh(new THREE.PlaneGeometry(72, 64, 30, 26), makeWater('#1f86c4', 0.96));
+      ocean.rotation.x = -Math.PI / 2;
+      ocean.position.set(43, 0.1, 0);
+      ocean.userData.water = true;
+      g.add(sand, ocean);
+      const pole = mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), std('#c9c9c9'));
+      pole.position.set(-3.5, 1.1, 7);
+      const canopy = mesh(new THREE.ConeGeometry(1.5, 0.7, 12), std('#e6533f', { roughness: 0.7 }));
+      canopy.position.set(-3.5, 2.35, 7);
+      g.add(pole, canopy);
+      const p1 = palm();
+      p1.position.set(-5, 0.2, -8);
+      const p2 = palm();
+      p2.position.set(-2.5, 0.2, -13);
+      p2.rotation.y = 1.2;
+      p2.scale.setScalar(0.85);
+      g.add(p1, p2);
+      return g;
+    },
+    'ski-mountain': () => {
+      const g = new THREE.Group();
+      const rockMat = std('#8a94a0', { roughness: 1 });
+      const snowMat = std('#f2f7ff', { roughness: 0.85 });
+      const m1 = mesh(new THREE.ConeGeometry(20, 27, 7), rockMat);
+      m1.position.y = 13.5;
+      m1.rotation.y = 0.3;
+      const s1 = mesh(new THREE.ConeGeometry(9.5, 12, 7), snowMat);
+      s1.position.y = 21.5;
+      s1.rotation.y = 0.3;
+      const m2 = mesh(new THREE.ConeGeometry(13, 19, 7), std('#929ca8', { roughness: 1 }));
+      m2.position.set(17, 9.5, 7);
+      m2.rotation.y = 0.8;
+      const s2 = mesh(new THREE.ConeGeometry(6, 8, 7), snowMat);
+      s2.position.set(17, 15.5, 7);
+      s2.rotation.y = 0.8;
+      g.add(m1, s1, m2, s2);
+      // ski lift up the front slope
+      const liftMat = std('#3a3f48');
+      const bottom = new THREE.Vector3(-3, 1.2, 19);
+      const top = new THREE.Vector3(0, 18, 4);
+      for (let i = 1; i < 5; i++) {
+        const p = bottom.clone().lerp(top, i / 5);
+        const tower = mesh(new THREE.CylinderGeometry(0.18, 0.24, 2.6, 6), liftMat);
+        tower.position.set(p.x, p.y + 0.3, p.z);
+        g.add(tower);
+      }
+      g.add(connect(bottom.clone().setY(bottom.y + 1.3), top.clone().setY(top.y + 1.3), 0.04, std('#23272e')));
+      for (let i = 0; i < 5; i++) {
+        const p = bottom.clone().lerp(top, 0.1 + i * 0.2).add(new THREE.Vector3(0, 1.3, 0));
+        const hanger = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), liftMat, false);
+        hanger.position.set(p.x, p.y - 0.2, p.z);
+        const chair = mesh(new THREE.BoxGeometry(0.5, 0.1, 0.35), std('#e0a93f'), false);
+        chair.position.set(p.x, p.y - 0.45, p.z);
+        g.add(hanger, chair);
       }
       return g;
     },
