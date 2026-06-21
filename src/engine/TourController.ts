@@ -43,13 +43,25 @@ const WELCOME = [
   'Let me grab the wheel and show you around the world I built.',
   "Sit back — it's a quick ride.",
 ];
-const STOPS: Array<{ id: string; lines: string[] }> = [
+// Each stop: `lines` play at the biome's boards (1st line → text board, rest →
+// the display panel); optional `lead` plays while parked in the biome just
+// before this one (used for a transition aside). Reorder freely; navigation
+// re-routes itself over the pad graph.
+const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
   { id: 'hub', lines: ["That's me, up on the board.", 'I’m an AI engineer — I build agentic AI, MCP servers, and full-stack systems.'] },
-  { id: 'goti', lines: ['First stop: Goti.', 'A crew of AI agents that negotiate deals for you across marketplaces.', 'We took third at the AgentForge hackathon — those are real screens.'] },
-  { id: 'sidekick', lines: ['Next up: Sidekick.', 'A group-chat AI agent that lives in your Telegram and iMessage threads.', 'It won the Eazo regional — that’s the live demo playing.'] },
-  { id: 'classroom', lines: ['Now let me take you back to school — Santa Clara.', 'A couple of my favorite class projects are through here.'] },
-  { id: 'churn-ml', lines: ['From Applied Machine Learning: predicting customer churn.', 'Those plots are straight out of my notebook — the model is real.'] },
+  { id: 'classroom', lines: ['I graduated from Santa Clara in 2024', 'Some of my favorite projects from school are through here.'] },
+  { id: 'churn-ml', lines: ['From Applied Machine Learning: predicting customer churn.', 'Here are some snippets from the report. You can check it out on your own after the tour.'] },
   { id: 'tsp-opt', lines: ['And from Optimization: a traveling-salesman solver.', 'Watch the genetic algorithm settle on the shortest route.'] },
+  {
+    id: 'goti',
+    lead: ['After graduating, I spend my time attending hackathons and building cool projects!', "Let's check out Goti!"],
+    lines: [
+      'Goti is a crew of AI agents that negotiate deals for you across marketplaces.',
+      'We took third at the AgentForge hackathon — here are some snippets of the product',
+      "Let's check out another hackathon project!",
+    ],
+  },
+  { id: 'sidekick', lines: ['Sidekick. A group-chat AI agent that lives in your Telegram and iMessage threads.', "It won the Eazo regional — that's the promotional video playing."] },
 ];
 const CLOSING = [
   "And that’s the tour.",
@@ -136,7 +148,7 @@ export class TourController {
     await this.sayAll(WELCOME);
     for (let i = 0; i < STOPS.length; i++) {
       if (this.aborted) return;
-      if (i > 0) await this.navigateTo(STOPS[i].id);
+      if (i > 0) await this.navigateTo(STOPS[i].id, STOPS[i].lead);
       await this.tourBiome(STOPS[i].lines);
     }
     if (this.aborted) return;
@@ -180,15 +192,23 @@ export class TourController {
     await this.delay(0.5);
   }
 
-  /** Drive the pad graph (morphing) from the current biome to `target`. */
-  private async navigateTo(target: string) {
+  /** Drive the pad graph (morphing) from the current biome to `target`. If
+   *  `lead` is given, narrate it while parked in the biome just before the
+   *  final hop (a transition aside before entering `target`). */
+  private async navigateTo(target: string, lead?: string[]) {
     let guard = 0;
+    let leadSaid = false;
     while (!this.aborted && this.d.currentBiomeId() !== target && guard++ < 8) {
       const cur = this.d.currentBiomeId();
       if (!cur) break;
       const path = bfsPath(this.d.padGraph, cur, target);
       if (!path || path.length < 2) break;
       const next = path[1];
+      if (next === target && lead && lead.length && !leadSaid) {
+        leadSaid = true;
+        await this.sayAll(lead); // parked in the penultimate biome, before the final morph
+        if (this.aborted) return;
+      }
       const pad = this.d.padGraph.get(cur)?.find((p) => p.target === next);
       if (!pad) break;
       this.d.unit.setTarget(new THREE.Vector3(pad.x, 0, pad.z));
