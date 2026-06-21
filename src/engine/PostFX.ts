@@ -11,6 +11,7 @@ import {
   VignetteEffect,
   BlendFunction,
 } from 'postprocessing';
+import { getQuality } from './quality';
 
 /**
  * PostFX — the composited look: a vivid SELECTIVE bloom (only the emissive
@@ -29,12 +30,14 @@ export class PostFX {
     this.composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
     this.composer.addPass(new RenderPass(scene, camera));
 
+    const q = getQuality();
     this.bloom = new SelectiveBloomEffect(scene, camera, {
       blendFunction: BlendFunction.ADD,
       intensity: 1.5,
       luminanceThreshold: 0.2,
       luminanceSmoothing: 0.25,
-      mipmapBlur: true,
+      mipmapBlur: !q.mobile, // cheaper Kawase blur on mobile
+      resolutionScale: q.bloomResolutionScale,
       radius: 0.62,
     });
 

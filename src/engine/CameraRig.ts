@@ -8,8 +8,9 @@ import type { FocusOverride } from './FocusController';
  * distance, and smoothly trails a focus point (the unit). Controls:
  *  - mouse wheel  → zoom (distance)
  *  - right-drag   → orbit (azimuth)
+ *  - one-finger drag (touch) → orbit; two-finger pinch (touch) → zoom
  *
- * Left-click is intentionally left free for click-to-move.
+ * Left-click / single tap are intentionally left free for click-to-move.
  */
 export class CameraRig {
   /** Downward tilt of the camera, in degrees (the isometric angle). */
@@ -33,8 +34,10 @@ export class CameraRig {
   private readonly lookTarget = new THREE.Vector3();
   private readonly desired = new THREE.Vector3();
   private readonly offset = new THREE.Vector3();
-  private dragging = false;
+  private dragging = false; // mouse right-drag
   private lastX = 0;
+  private readonly touches = new Map<number, { x: number; y: number }>();
+  private pinchDist = 0;
   private initialised = false;
   /** Resting FOV, restored as focus releases. */
   private readonly baseFov: number;
@@ -48,6 +51,7 @@ export class CameraRig {
     dom.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerUp);
     dom.addEventListener('contextmenu', this.onContextMenu);
   }
 
@@ -62,21 +66,56 @@ export class CameraRig {
   };
 
   private onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 2) return; // right button only
-    this.dragging = true;
-    this.lastX = e.clientX;
+    if (e.pointerType === 'mouse') {
+      if (e.button !== 2) return; // right-drag orbits; left is free for move
+      this.dragging = true;
+      this.lastX = e.clientX;
+      return;
+    }
+    this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.touches.size === 2) this.pinchDist = this.currentPinchDist();
   };
 
   private onPointerMove = (e: PointerEvent) => {
-    if (!this.dragging) return;
-    const dx = e.clientX - this.lastX;
-    this.lastX = e.clientX;
-    this.azimuth -= dx * 0.005;
+    if (e.pointerType === 'mouse') {
+      if (!this.dragging) return;
+      const dx = e.clientX - this.lastX;
+      this.lastX = e.clientX;
+      this.azimuth -= dx * 0.005;
+      return;
+    }
+    const t = this.touches.get(e.pointerId);
+    if (!t) return;
+    const dx = e.clientX - t.x;
+    t.x = e.clientX;
+    t.y = e.clientY;
+    if (this.touches.size === 1) {
+      this.azimuth -= dx * 0.006; // one-finger drag = orbit
+    } else if (this.touches.size === 2) {
+      const d = this.currentPinchDist();
+      if (this.pinchDist > 0 && d > 0) {
+        this.distance = THREE.MathUtils.clamp(this.distance * (this.pinchDist / d), this.minDistance, this.maxDistance);
+      }
+      this.pinchDist = d;
+    }
   };
 
-  private onPointerUp = () => {
-    this.dragging = false;
+  private onPointerUp = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') {
+      this.dragging = false;
+      return;
+    }
+    this.touches.delete(e.pointerId);
+    if (this.touches.size < 2) this.pinchDist = 0;
   };
+
+  /** Pixel distance between the two active touch points. */
+  private currentPinchDist(): number {
+    const it = this.touches.values();
+    const a = it.next().value;
+    const b = it.next().value;
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  }
 
   private onContextMenu = (e: Event) => e.preventDefault();
 
@@ -136,6 +175,7 @@ export class CameraRig {
     this.dom.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerUp);
     this.dom.removeEventListener('contextmenu', this.onContextMenu);
   }
 }

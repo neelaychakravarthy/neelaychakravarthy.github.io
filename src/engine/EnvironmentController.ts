@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { EnvironmentConfig } from '../world/types';
+import { getQuality } from './quality';
 
 /**
  * EnvironmentController — owns the persistent atmosphere (sky, fog, lights,
@@ -79,7 +80,8 @@ export class EnvironmentController {
     this.sun.position.set(24, 34, 18);
     this.sunOffset.copy(this.sun.position);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    const sm = getQuality().shadowMapSize;
+    this.sun.shadow.mapSize.set(sm, sm);
     this.sun.shadow.camera.near = 1;
     this.sun.shadow.camera.far = 130;
     const s = 50;

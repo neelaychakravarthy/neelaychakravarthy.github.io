@@ -22,6 +22,10 @@ export class ClickToMove {
   private readonly ring: THREE.Mesh;
   private pulse = 0;
   private hoveredTip: THREE.Object3D | null = null;
+  // touch tap tracking (a tap drives; a drag/pinch is the camera's, not a move)
+  private tapId: number | null = null;
+  private tapStart = { x: 0, y: 0, t: 0 };
+  private activeTouches = 0;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -43,17 +47,18 @@ export class ClickToMove {
 
     dom.addEventListener('pointerdown', this.onPointerDown);
     dom.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerCancel);
   }
 
-  private onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 || this.handlers.isLocked()) return;
-
+  /** Raycast at a screen point: a clickable interactable wins, else drive there. */
+  private fireAt(clientX: number, clientY: number) {
+    if (this.handlers.isLocked()) return;
     const rect = this.dom.getBoundingClientRect();
-    this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
-    // Interactables win over ground.
     const clickables = this.handlers.getClickables();
     if (clickables.length) {
       const hit = this.raycaster.intersectObjects(clickables, false)[0];
@@ -69,9 +74,40 @@ export class ClickToMove {
     this.marker.position.set(g.point.x, 0, g.point.z);
     this.marker.visible = true;
     this.pulse = 0;
+  }
+
+  private onPointerDown = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') {
+      if (e.button === 0) this.fireAt(e.clientX, e.clientY); // immediate on desktop
+      return;
+    }
+    // touch/pen: start a candidate tap (cancelled if a 2nd finger lands)
+    this.activeTouches++;
+    if (this.activeTouches > 1) {
+      this.tapId = null;
+      return;
+    }
+    this.tapId = e.pointerId;
+    this.tapStart = { x: e.clientX, y: e.clientY, t: performance.now() };
+  };
+
+  private onPointerUp = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    this.activeTouches = Math.max(0, this.activeTouches - 1);
+    if (e.pointerId !== this.tapId) return;
+    this.tapId = null;
+    const moved = Math.hypot(e.clientX - this.tapStart.x, e.clientY - this.tapStart.y);
+    if (moved < 16 && performance.now() - this.tapStart.t < 500) this.fireAt(e.clientX, e.clientY);
+  };
+
+  private onPointerCancel = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    this.activeTouches = Math.max(0, this.activeTouches - 1);
+    if (e.pointerId === this.tapId) this.tapId = null;
   };
 
   private onPointerMove = (e: PointerEvent) => {
+    if (e.pointerType !== 'mouse') return; // hover/tooltips are desktop-only
     if (this.handlers.isLocked()) {
       this.clearHover();
       return;
@@ -117,5 +153,7 @@ export class ClickToMove {
   dispose() {
     this.dom.removeEventListener('pointerdown', this.onPointerDown);
     this.dom.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerCancel);
   }
 }

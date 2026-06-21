@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import gsap from 'gsap';
 import type { AtmosphereConfig } from '../world/types';
 import { wrapNearest } from './wrap';
+import { getQuality } from './quality';
 
 /**
  * Atmosphere — procedural ambient life, configured per biome and crossfaded on
@@ -100,7 +101,7 @@ class Layer {
 
   // ---- builders ----
   private buildGrass(density: number, color: string, clearings: number[][]) {
-    const target = Math.min(8000, Math.max(1, Math.floor(density * 7000)));
+    const target = Math.min(8000, Math.max(1, Math.floor(density * 7000 * getQuality().grassScale)));
     // collect blade positions, skipping cleared circles (pool deck, etc.)
     const pts: number[] = [];
     let attempts = 0;

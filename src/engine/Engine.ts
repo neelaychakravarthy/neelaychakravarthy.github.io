@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PostFX } from './PostFX';
+import { getQuality } from './quality';
 
 /**
  * Engine — owns the renderer, scene, camera, and the render loop.
@@ -20,7 +21,7 @@ export class Engine {
       antialias: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(getQuality().pixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -50,7 +51,7 @@ export class Engine {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(getQuality().pixelRatio);
     this.postfx.setSize(w, h);
   };
 

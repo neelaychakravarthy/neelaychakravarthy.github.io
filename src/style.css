@@ -17,15 +17,17 @@ html, body {
   display: block;
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* track mobile browser UI bars */
   outline: none;
-  touch-action: none; /* prevent browser gesture interference with click/drag */
+  touch-action: none; /* prevent browser gesture interference with tap/drag/pinch */
 }
 
 /* ---- HUD overlays ---- */
 .overlay {
   position: fixed;
   left: 50%;
-  bottom: 22px;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 24px);
   transform: translateX(-50%);
   display: flex;
   gap: 10px;

@@ -19,6 +19,7 @@ import { InteractionManager } from './engine/InteractionManager';
 import { loadWorld } from './engine/WorldLoader';
 import { AudioManager } from './engine/AudioManager';
 import { WORLD_PERIOD, setWorldPeriod, wrapDelta } from './engine/wrap';
+import { initQuality, detectMobile } from './engine/quality';
 import type { SpawnConfig } from './world/types';
 
 function hideLoader() {
@@ -55,59 +56,6 @@ function webgl2Available(): boolean {
   }
 }
 
-function isHandheld(): boolean {
-  try {
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
-    const small = Math.min(window.innerWidth, window.innerHeight) < 700;
-    return coarse && small;
-  } catch {
-    return false;
-  }
-}
-
-/** Tiny desktop-only courtesy card for phones/tablets (the world is desktop-only). */
-function showMobileCard() {
-  hideLoader();
-  const wrap = document.createElement('div');
-  wrap.style.cssText =
-    'position:fixed;inset:0;display:grid;place-items:center;z-index:100;padding:22px;overflow:auto;' +
-    'background:radial-gradient(130% 120% at 50% 0%,#1d2d49 0%,#0c1322 72%);' +
-    'font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;';
-  const card = document.createElement('div');
-  card.style.cssText =
-    'max-width:420px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);' +
-    'border-radius:18px;padding:30px 26px;color:#eaf1fb;box-shadow:0 18px 60px rgba(0,0,0,.42);text-align:center;';
-  card.innerHTML =
-    '<div style="font-weight:700;font-size:22px;letter-spacing:.2px;">Neelay Chakravarthy</div>' +
-    '<div style="font-size:14px;color:#9fb4d4;margin-top:6px;">AI Engineer · Agentic AI &amp; Full-Stack</div>' +
-    '<div style="font-size:13.5px;line-height:1.6;color:#c2d0e6;margin:18px 0 22px;">' +
-    'This portfolio is an explorable 3D world, best experienced on a desktop browser. ' +
-    'Open it on a computer to drive around and explore my projects.</div>';
-  const links: Array<[string, string]> = [
-    ['GitHub', 'https://github.com/neelaychakravarthy'],
-    ['LinkedIn', 'https://linkedin.com/in/neelay-chakravarthy'],
-    ['Email', 'mailto:nkchakra2@gmail.com'],
-  ];
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
-  for (const [label, url] of links) {
-    const a = document.createElement('a');
-    a.href = url;
-    if (!url.startsWith('mailto:')) {
-      a.target = '_blank';
-      a.rel = 'noopener';
-    }
-    a.textContent = label;
-    a.style.cssText =
-      'display:block;padding:12px 14px;border-radius:11px;text-decoration:none;font-weight:600;font-size:15px;' +
-      'background:rgba(120,160,230,.18);border:1px solid rgba(150,185,240,.3);color:#eaf1fb;';
-    row.appendChild(a);
-  }
-  card.appendChild(row);
-  wrap.appendChild(card);
-  document.body.appendChild(wrap);
-}
-
 function applySpawn(unit: Unit, spawn?: SpawnConfig) {
   if (!spawn) return;
   unit.object.position.set(...spawn.position);
@@ -115,9 +63,11 @@ function applySpawn(unit: Unit, spawn?: SpawnConfig) {
 }
 
 async function boot() {
-  if (isHandheld()) {
-    showMobileCard();
-    return;
+  const mobile = detectMobile();
+  initQuality(mobile);
+  if (mobile) {
+    const hint = document.querySelector('#hint span');
+    if (hint) hint.textContent = 'Tap to drive · roll onto a glowing pad to enter a project · pinch to zoom · drag to rotate';
   }
 
   if (!webgl2Available()) {
@@ -286,9 +236,10 @@ async function boot() {
   muteBtn.textContent = '🔊';
   muteBtn.title = 'Mute / unmute';
   muteBtn.style.cssText =
-    'position:fixed;right:16px;bottom:16px;z-index:30;width:42px;height:42px;border-radius:50%;' +
+    'position:fixed;right:calc(16px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));' +
+    'z-index:30;width:46px;height:46px;border-radius:50%;touch-action:manipulation;' +
     'border:1px solid rgba(255,255,255,.25);background:rgba(20,32,48,.55);backdrop-filter:blur(8px);' +
-    '-webkit-backdrop-filter:blur(8px);color:#fff;font-size:18px;cursor:pointer;line-height:1;';
+    '-webkit-backdrop-filter:blur(8px);color:#fff;font-size:19px;cursor:pointer;line-height:1;';
   muteBtn.addEventListener('click', () => {
     muteBtn.textContent = audio.toggleMute() ? '🔇' : '🔊';
   });
