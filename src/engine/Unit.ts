@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { wrapNearest } from './wrap';
+import { wrapDelta, wrapNearest } from './wrap';
 
 /**
  * A circular no-go region (mountain base, water, etc.). Anchored to a structure
@@ -13,6 +13,17 @@ export interface Collider {
   dx: number;
   dz: number;
   radius: number;
+}
+
+/**
+ * The looping river: an E-W water band (centreZ ± halfZ) that blocks driving,
+ * except across the central grass land-bridge (|world x| < bridgeHalf). Both axes
+ * are toroidal, so it tiles with the world.
+ */
+export interface RiverBlock {
+  centerZ: number;
+  halfZ: number;
+  bridgeHalf: number;
 }
 
 /**
@@ -40,6 +51,8 @@ export class Unit {
 
   /** Circular obstacles the unit can't enter (drives around / stops at the edge). */
   colliders: Collider[] = [];
+  /** Optional looping river that blocks all but the central land-bridge. */
+  river: RiverBlock | null = null;
 
   private target: THREE.Vector3 | null = null;
   private velocity = 0;
@@ -77,6 +90,20 @@ export class Unit {
         this.target.z += dz * s;
       }
     }
+    this.clampOutOfRiver(this.target);
+  }
+
+  /** If a point is in the river, pull it to the nearest bank or bridge edge. */
+  private clampOutOfRiver(p: THREE.Vector3) {
+    const r = this.river;
+    if (!r) return;
+    const dz = wrapDelta(p.z, r.centerZ);
+    const dx = wrapDelta(p.x, 0);
+    if (Math.abs(dz) >= r.halfZ || Math.abs(dx) <= r.bridgeHalf) return;
+    const pushZ = r.halfZ - Math.abs(dz); // to the z-band edge (a bank)
+    const pushX = Math.abs(dx) - r.bridgeHalf; // to the bridge x-edge
+    if (pushZ <= pushX) p.z += Math.sign(dz) * pushZ;
+    else p.x -= Math.sign(dx) * pushX;
   }
 
   /** Cancel movement (used while a morph drives the unit externally). */
@@ -119,7 +146,7 @@ export class Unit {
       const spin = (this.velocity * dt) / this.wheelRadius;
       for (const w of this.wheels) w.rotation.x += spin;
     }
-    if (this.colliders.length) this.resolveCollisions();
+    if (this.colliders.length || this.river) this.resolveCollisions();
   }
 
   /** Push the unit out of any obstacle it has entered (slides along the edge,
@@ -140,6 +167,7 @@ export class Unit {
         this.position.x += c.radius; // dead-centre: shove out along +x
       }
     }
+    this.clampOutOfRiver(this.position);
   }
 
   // ---- construction ----

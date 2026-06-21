@@ -118,6 +118,8 @@ export interface BiomeConfig {
   pads?: PadConfig[];
   audio?: AmbientConfig;
   atmosphere?: AtmosphereConfig;
+  /** A looping E-W river that only the central grass land-bridge crosses. */
+  river?: { centerZ?: number; halfZ: number; bridgeHalf: number };
 }
 
 export interface WorldConfig {

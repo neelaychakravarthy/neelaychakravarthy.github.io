@@ -148,6 +148,7 @@ async function boot() {
   const start = biomes.start(world.startBiome);
   applySpawn(unit, start.config.spawn);
   unit.colliders = start.colliders;
+  unit.river = start.river;
   engine.postfx.setSelection(start.glows);
 
   const fx = new MorphFX(
@@ -236,6 +237,7 @@ async function boot() {
         interaction.setBiome(to.pads, unit.position);
         focus.setBiome(to.focusables);
         unit.colliders = to.colliders;
+        unit.river = to.river;
         engine.postfx.setSelection(to.glows);
         locked = false;
       },

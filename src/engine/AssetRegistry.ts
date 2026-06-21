@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { WORLD_PERIOD } from './wrap';
+
+/** Half-width (x) of the central grass land-bridge; the river is the gap beyond it. */
+export const BRIDGE_HALF = 42;
 
 /**
  * AssetRegistry — resolves a `modelId` to a 3D object.
@@ -33,6 +37,36 @@ function makeWater(color: THREE.ColorRepresentation, opacity = 0.9): THREE.MeshS
         '#include <begin_vertex>',
         `#include <begin_vertex>
          transformed.z += sin(position.x * 0.6 + uTime * 1.4) * 0.06 + sin(position.y * 0.9 + uTime * 1.1) * 0.05;`,
+      );
+  };
+  return mat;
+}
+
+/** River water: like makeWater, but the fragment shader carves out the central
+ *  land-bridge gap (|world x| < BRIDGE_HALF, periodic) so the bridge stays grass
+ *  while the water tiles to either side. */
+function makeRiverWater(color: THREE.ColorRepresentation, opacity: number): THREE.MeshStandardMaterial {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.18, metalness: 0.5, transparent: true, opacity, side: THREE.DoubleSide });
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = { value: 0 };
+    shader.uniforms.uPeriod = { value: WORLD_PERIOD };
+    shader.uniforms.uBridge = { value: BRIDGE_HALF };
+    mat.userData.shader = shader;
+    shader.vertexShader =
+      'uniform float uTime;\nvarying float vWX;\n' +
+      shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+         transformed.z += sin(position.x * 0.5 + uTime * 1.2) * 0.05 + sin(position.y * 0.7 + uTime * 0.9) * 0.04;
+         vWX = (modelMatrix * vec4(transformed, 1.0)).x;`,
+      );
+    shader.fragmentShader =
+      'uniform float uPeriod;\nuniform float uBridge;\nvarying float vWX;\n' +
+      shader.fragmentShader.replace(
+        '#include <clipping_planes_fragment>',
+        `#include <clipping_planes_fragment>
+         float _dx = vWX - uPeriod * floor(vWX / uPeriod + 0.5);
+         if (abs(_dx) < uBridge) discard;`,
       );
   };
   return mat;
@@ -565,28 +599,38 @@ export class AssetRegistry {
       }
       return g;
     },
+    // A shoreline sand strip where the grass land-bridge meets the river. The
+    // outer (local +x) edge sits at the water; umbrella + palms go on the inland
+    // (local -x) side. Placed at both bridge edges (the west one rotated 180°).
     beach: () => {
       const g = new THREE.Group();
-      const sand = mesh(new THREE.BoxGeometry(15, 0.25, 42), std('#e8d4a2', { roughness: 1 }));
-      sand.position.set(0, 0.12, 0);
+      const sand = mesh(new THREE.BoxGeometry(11, 0.25, 50), std('#e8d4a2', { roughness: 1 }));
+      sand.position.set(0, 0.13, 0);
       sand.receiveShadow = true;
-      const ocean = new THREE.Mesh(new THREE.PlaneGeometry(72, 64, 30, 26), makeWater('#1f86c4', 0.96));
-      ocean.rotation.x = -Math.PI / 2;
-      ocean.position.set(43, 0.1, 0);
-      ocean.userData.water = true;
-      g.add(sand, ocean);
+      g.add(sand);
       const pole = mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), std('#c9c9c9'));
-      pole.position.set(-3.5, 1.1, 7);
+      pole.position.set(-3, 1.1, 6);
       const canopy = mesh(new THREE.ConeGeometry(1.5, 0.7, 12), std('#e6533f', { roughness: 0.7 }));
-      canopy.position.set(-3.5, 2.35, 7);
+      canopy.position.set(-3, 2.35, 6);
       g.add(pole, canopy);
       const p1 = palm();
-      p1.position.set(-5, 0.2, -8);
+      p1.position.set(-3.5, 0.2, -12);
       const p2 = palm();
-      p2.position.set(-2.5, 0.2, -13);
+      p2.position.set(-3, 0.2, 17);
       p2.rotation.y = 1.2;
       p2.scale.setScalar(0.85);
       g.add(p1, p2);
+      return g;
+    },
+    // The looping river: a wide water band whose shader carves out the central
+    // land-bridge so the plaza grass crosses it. Tiles E-W with the world.
+    river: () => {
+      const g = new THREE.Group();
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_PERIOD * 3, 50, 64, 14), makeRiverWater('#2f86c4', 0.95));
+      water.rotation.x = -Math.PI / 2;
+      water.position.y = 0.1;
+      water.userData.water = true;
+      g.add(water);
       return g;
     },
     'ski-mountain': () => {

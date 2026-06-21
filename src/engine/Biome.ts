@@ -5,7 +5,7 @@ import type { AssetRegistry } from './AssetRegistry';
 import { EnvironmentController } from './EnvironmentController';
 import { makeContent, makePad } from './interactables';
 import { wrapNearest } from './wrap';
-import type { Collider } from './Unit';
+import type { Collider, RiverBlock } from './Unit';
 
 /** How far (world units) structures drop below ground when sunk during a morph. */
 export const MORPH_SINK = 10;
@@ -44,6 +44,7 @@ export interface BuiltBiome {
   waters: THREE.Object3D[];
   focusables: THREE.Object3D[];
   colliders: Collider[];
+  river: RiverBlock | null;
 }
 
 function buildBiome(
@@ -139,8 +140,12 @@ function buildBiome(
     }
   }
 
+  const river: RiverBlock | null = config.river
+    ? { centerZ: config.river.centerZ ?? 0, halfZ: config.river.halfZ, bridgeHalf: config.river.bridgeHalf }
+    : null;
+
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders, river };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {
