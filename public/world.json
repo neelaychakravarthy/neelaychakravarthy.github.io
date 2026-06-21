@@ -54,9 +54,10 @@
             "B.S. Computer Science · Santa Clara University '24"
           ]
         },
-        { "type": "link", "label": "GitHub", "url": "https://github.com/neelaychakravarthy", "position": [-3.6, 0, 4.5] },
-        { "type": "link", "label": "LinkedIn", "url": "https://linkedin.com/in/neelay-chakravarthy", "position": [0, 0, 5.2] },
-        { "type": "link", "label": "Email", "tooltip": "nkchakra2@gmail.com", "position": [3.6, 0, 4.5] }
+        { "type": "link", "label": "Resume", "url": "/assets/docs/resume.pdf", "position": [-5.6, 0, 4.2] },
+        { "type": "link", "label": "GitHub", "url": "https://github.com/neelaychakravarthy", "position": [-1.9, 0, 5.0] },
+        { "type": "link", "label": "LinkedIn", "url": "https://linkedin.com/in/neelay-chakravarthy", "position": [1.9, 0, 5.0] },
+        { "type": "link", "label": "Email", "tooltip": "nkchakra2@gmail.com", "position": [5.6, 0, 4.2] }
       ],
       "pads": [
         { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },

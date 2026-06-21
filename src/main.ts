@@ -10,6 +10,7 @@ import { CameraRig } from './engine/CameraRig';
 import { FocusController } from './engine/FocusController';
 import { TireFX } from './engine/TireFX';
 import { DolphinFX } from './engine/DolphinFX';
+import { Minimap } from './engine/Minimap';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
 import { AssetRegistry } from './engine/AssetRegistry';
@@ -125,6 +126,9 @@ async function boot() {
   const dolphins = new DolphinFX(engine.scene);
   dolphins.setRiver(start.river);
 
+  const minimap = new Minimap();
+  minimap.setBiome(start.pads);
+
   const transition = new TransitionController();
   const interaction = new InteractionManager();
   interaction.setBiome(start.pads, unit.position);
@@ -191,6 +195,7 @@ async function boot() {
         biomes.dispose(from);
         biomes.current = to;
         interaction.setBiome(to.pads, unit.position);
+        minimap.setBiome(to.pads);
         focus.setBiome(to.focusables);
         unit.colliders = to.colliders;
         unit.river = to.river;
@@ -276,6 +281,7 @@ async function boot() {
     dolphins.update(dt, unit.position.x);
     atmosphere.update(dt, unit.position.x, unit.position.z);
     biomes.update(dt, engine.camera, unit.position);
+    minimap.update(unit.position, unit.object.rotation.y);
 
     if (firstFrame) {
       firstFrame = false;
