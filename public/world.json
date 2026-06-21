@@ -215,7 +215,7 @@
         "sunPosition": [20, 32, 16],
         "groundColor": "#86a862"
       },
-      "audio": { "music": "curious-major", "ambientRoot": 233.08, "ambientGain": 0.44 },
+      "audio": { "music": "bell-pairs", "ambientRoot": 233.08, "ambientGain": 0.44 },
       "atmosphere": { "grass": 0.9, "grassColor": "#7eb96a", "clouds": 5, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 60 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [

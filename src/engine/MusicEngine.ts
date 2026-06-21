@@ -9,6 +9,9 @@
  * manifest. Themes crossfade on a morph.
  */
 
+/** Scheduler resolution: eighth notes (2 steps per beat). */
+const STEPS_PER_BEAT = 2;
+
 const SCALES = {
   major: [0, 2, 4, 5, 7, 9, 11],
   minor: [0, 2, 3, 5, 7, 8, 10],
@@ -17,6 +20,9 @@ const SCALES = {
   mixolydian: [0, 2, 4, 5, 7, 9, 10],
   pentaMajor: [0, 2, 4, 7, 9],
 } as const;
+
+/** Distinct melodic character per biome (rhythm + shape), so they don't blur together. */
+type MelodyStyle = 'wander' | 'motif' | 'arp' | 'pairs' | 'run' | 'pulse';
 
 interface Preset {
   scale: readonly number[];
@@ -29,7 +35,9 @@ interface Preset {
   bassWave: OscillatorType;
   /** pad low-pass cutoff (Hz) */
   brightness: number;
-  /** 0..1 chance of a melody note per eligible beat */
+  /** the melody's character */
+  melodyStyle: MelodyStyle;
+  /** 0..1 how busy the melody is */
   melodyDensity: number;
   /** octave offset for the lead above the key root */
   leadOctave: number;
@@ -38,12 +46,19 @@ interface Preset {
 }
 
 export const MUSIC_PRESETS: Record<string, Preset> = {
-  'warm-major': { scale: SCALES.major, progression: [0, 4, 5, 3], bpm: 64, beatsPerChord: 8, padWave: 'triangle', leadWave: 'triangle', bassWave: 'sine', brightness: 1300, melodyDensity: 0.5, leadOctave: 1, reverbMix: 0.5 },
-  'dreamy-lydian': { scale: SCALES.lydian, progression: [0, 1, 4, 3], bpm: 60, beatsPerChord: 8, padWave: 'triangle', leadWave: 'sine', bassWave: 'sine', brightness: 1500, melodyDensity: 0.46, leadOctave: 1, reverbMix: 0.58 },
-  'cool-minor': { scale: SCALES.minor, progression: [0, 5, 2, 6], bpm: 56, beatsPerChord: 8, padWave: 'sine', leadWave: 'sine', bassWave: 'sine', brightness: 950, melodyDensity: 0.42, leadOctave: 1, reverbMix: 0.62 },
-  'curious-major': { scale: SCALES.major, progression: [0, 3, 4, 0], bpm: 70, beatsPerChord: 8, padWave: 'triangle', leadWave: 'triangle', bassWave: 'sine', brightness: 1400, melodyDensity: 0.5, leadOctave: 1, reverbMix: 0.5 },
-  'techy-dorian': { scale: SCALES.dorian, progression: [0, 6, 5, 3], bpm: 72, beatsPerChord: 8, padWave: 'sawtooth', leadWave: 'triangle', bassWave: 'triangle', brightness: 1100, melodyDensity: 0.55, leadOctave: 1, reverbMix: 0.5 },
-  'minimal-penta': { scale: SCALES.pentaMajor, progression: [0, 3, 2, 0], bpm: 60, beatsPerChord: 8, padWave: 'sine', leadWave: 'sine', bassWave: 'sine', brightness: 1250, melodyDensity: 0.34, leadOctave: 1, reverbMix: 0.6 },
+  // hub — smooth, flowing major melody
+  'warm-major': { scale: SCALES.major, progression: [0, 4, 5, 3], bpm: 74, beatsPerChord: 8, padWave: 'triangle', leadWave: 'triangle', bassWave: 'sine', brightness: 1300, melodyStyle: 'wander', melodyDensity: 0.62, leadOctave: 1, reverbMix: 0.5 },
+  'dreamy-lydian': { scale: SCALES.lydian, progression: [0, 1, 4, 3], bpm: 70, beatsPerChord: 8, padWave: 'triangle', leadWave: 'sine', bassWave: 'sine', brightness: 1500, melodyStyle: 'wander', melodyDensity: 0.58, leadOctave: 1, reverbMix: 0.58 },
+  // goti — a catchy repeating arpeggio motif
+  'curious-major': { scale: SCALES.major, progression: [0, 3, 4, 0], bpm: 80, beatsPerChord: 8, padWave: 'triangle', leadWave: 'triangle', bassWave: 'sine', brightness: 1400, melodyStyle: 'motif', melodyDensity: 0.9, leadOctave: 1, reverbMix: 0.48 },
+  // sidekick — dreamy descending arpeggios
+  'cool-minor': { scale: SCALES.minor, progression: [0, 5, 2, 6], bpm: 66, beatsPerChord: 8, padWave: 'sine', leadWave: 'sine', bassWave: 'sine', brightness: 950, melodyStyle: 'arp', melodyDensity: 0.78, leadOctave: 1, reverbMix: 0.62 },
+  // churn-ml — fast techy scale runs
+  'techy-dorian': { scale: SCALES.dorian, progression: [0, 6, 5, 3], bpm: 84, beatsPerChord: 8, padWave: 'sawtooth', leadWave: 'triangle', bassWave: 'triangle', brightness: 1100, melodyStyle: 'run', melodyDensity: 0.5, leadOctave: 1, reverbMix: 0.5 },
+  // tsp — minimalist repeated pulses
+  'minimal-penta': { scale: SCALES.pentaMajor, progression: [0, 3, 2, 0], bpm: 72, beatsPerChord: 8, padWave: 'sine', leadWave: 'sine', bassWave: 'sine', brightness: 1250, melodyStyle: 'pulse', melodyDensity: 0.7, leadOctave: 1, reverbMix: 0.6 },
+  // classroom — gentle call-and-response pairs
+  'bell-pairs': { scale: SCALES.major, progression: [0, 5, 3, 4], bpm: 78, beatsPerChord: 8, padWave: 'triangle', leadWave: 'sine', bassWave: 'sine', brightness: 1350, melodyStyle: 'pairs', melodyDensity: 0.8, leadOctave: 1, reverbMix: 0.52 },
 };
 
 /** A short synthesized reverb impulse (decaying noise) — cinematic space. */
@@ -115,11 +130,11 @@ export class MusicEngine {
   private scheduler() {
     const p = this.preset;
     if (!p) return;
-    const secPerBeat = 60 / p.bpm;
+    const secPerStep = 60 / p.bpm / STEPS_PER_BEAT; // eighth-note grid
     const ahead = this.ctx.currentTime + 0.3;
     while (this.nextStepTime < ahead) {
       this.scheduleStep(this.nextStepTime, this.step);
-      this.nextStepTime += secPerBeat;
+      this.nextStepTime += secPerStep;
       this.step++;
     }
   }
@@ -127,24 +142,90 @@ export class MusicEngine {
   private scheduleStep(time: number, step: number) {
     const p = this.preset!;
     const secPerBeat = 60 / p.bpm;
-    const chordIndex = Math.floor(step / p.beatsPerChord) % p.progression.length;
-    const beatInChord = step % p.beatsPerChord;
+    const stepsPerChord = p.beatsPerChord * STEPS_PER_BEAT;
+    const chordIndex = Math.floor(step / stepsPerChord) % p.progression.length;
+    const localStep = step % stepsPerChord; // eighth-step within the chord
     const root = p.progression[chordIndex];
     const chordTones = [root, root + 2, root + 4]; // diatonic triad
 
-    if (beatInChord === 0) {
+    if (localStep === 0) {
       const chordDur = p.beatsPerChord * secPerBeat;
       this.playPad(time, chordTones.map((d) => this.degFreq(d, 0)), chordDur);
       this.playBass(time, this.degFreq(root, -1), chordDur);
     }
+    this.melody(time, step, localStep, root, chordTones, secPerBeat);
+  }
 
-    // sparse lead on even beats (and reset the contour each phrase so it sings)
-    if (step % 16 === 0) this.lastDeg = root;
-    if (step % 2 === 0 && Math.random() < p.melodyDensity) {
-      const deg = this.pickMelodyDeg(chordTones);
-      this.lastDeg = deg;
-      const dur = secPerBeat * (1.4 + Math.random() * 1.6);
-      this.playLead(time, this.degFreq(deg, p.leadOctave), dur);
+  // ---- melody styles (each biome sounds clearly different) ----
+  private melody(time: number, step: number, localStep: number, root: number, chordTones: number[], spb: number) {
+    const p = this.preset!;
+    const bar = localStep % 8; // eighth position within a 4/4 bar
+    const oct = p.leadOctave;
+    const lead = (deg: number, durBeats: number, at = time) => this.playLead(at, this.degFreq(deg, oct), spb * durBeats);
+
+    switch (p.melodyStyle) {
+      case 'wander': {
+        // smooth stepwise walk, leaning on chord tones; resets each 2 bars
+        if (step % 16 === 0) this.lastDeg = root;
+        const onBeat = localStep % 2 === 0;
+        const prob = onBeat ? p.melodyDensity : p.melodyDensity * 0.4;
+        if (Math.random() < prob) {
+          const deg = this.pickMelodyDeg(chordTones);
+          this.lastDeg = deg;
+          lead(deg, 1.2 + Math.random() * 1.1);
+        }
+        break;
+      }
+      case 'motif': {
+        // a fixed arpeggio figure per bar, transposed to the chord
+        const fig = [
+          { at: 0, off: 0 },
+          { at: 2, off: 2 },
+          { at: 3, off: 4 },
+          { at: 5, off: 2 },
+          { at: 6, off: 0 },
+        ];
+        for (const f of fig) if (f.at === bar && Math.random() < p.melodyDensity) lead(root + f.off, 0.9);
+        break;
+      }
+      case 'arp': {
+        // dreamy descending arpeggio on quarter beats: 5 - 3 - 1 - 3
+        const pos = [0, 2, 4, 6];
+        const degs = [4, 2, 0, 2];
+        const i = pos.indexOf(bar);
+        if (i >= 0 && Math.random() < p.melodyDensity) lead(root + degs[i], 1.7);
+        break;
+      }
+      case 'pairs': {
+        // gentle two-note call figures (a note + a neighbour an eighth later)
+        if (bar === 0 && Math.random() < p.melodyDensity) {
+          const base = root + (Math.random() < 0.5 ? 0 : 2);
+          lead(base, 0.6);
+          lead(base + 1, 0.8, time + spb * 0.5);
+        } else if (bar === 4 && Math.random() < p.melodyDensity * 0.85) {
+          const base = root + 4;
+          lead(base, 0.6);
+          lead(base - 1, 0.8, time + spb * 0.5);
+        }
+        break;
+      }
+      case 'run': {
+        // occasional fast scale runs up or down
+        if ((bar === 0 || bar === 4) && Math.random() < p.melodyDensity) {
+          const len = 4 + Math.floor(Math.random() * 3);
+          const dir = Math.random() < 0.55 ? 1 : -1;
+          for (let k = 0; k < len; k++) lead(root + dir * k, 0.5, time + k * spb * 0.5);
+        }
+        break;
+      }
+      case 'pulse': {
+        // minimalist repeated notes cycling chord tones, on quarter beats
+        const cyc = [0, 2, 0, 4];
+        if (localStep % 2 === 0 && Math.random() < p.melodyDensity) {
+          lead(root + cyc[(localStep / 2) % cyc.length], 0.85);
+        }
+        break;
+      }
     }
   }
 
