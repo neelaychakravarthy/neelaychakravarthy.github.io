@@ -24,21 +24,20 @@
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -2] },
-        { "modelId": "university-building", "position": [0, 0, -14.5] },
+        { "modelId": "university-building", "position": [-6.5, 0, -13], "rotationY": 0.5 },
         { "modelId": "gateway", "position": [-8.5, 0, 1], "rotationY": 0.35 },
         { "modelId": "gateway", "position": [8.5, 0, 1], "rotationY": -0.35 },
-        { "modelId": "pillar", "position": [-12, 0, -6] },
         { "modelId": "pillar", "position": [12, 0, -6] },
         { "modelId": "pillar", "position": [-12.5, 0, 4] },
         { "modelId": "pillar", "position": [12.5, 0, 4] },
-        { "modelId": "planter", "position": [-4.5, 0, -9.5] },
-        { "modelId": "planter", "position": [4.5, 0, -9.5] }
+        { "modelId": "planter", "position": [-9, 0, -10.5] },
+        { "modelId": "planter", "position": [-2.5, 0, -9] }
       ],
       "content": [
         {
           "type": "board",
-          "position": [0, 4.3, -5],
-          "width": 7.2,
+          "position": [4.8, 1.2, -6],
+          "width": 8.2,
           "accent": "#7fb4ff",
           "heading": "Neelay Chakravarthy",
           "subheading": "AI Engineer  ·  Agentic AI & Full-Stack",
@@ -54,7 +53,7 @@
       "pads": [
         { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },
         { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 },
-        { "id": "to-university", "position": [0, 0, -10], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 }
+        { "id": "to-university", "position": [-5, 0, -8], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 }
       ]
     },
     {
@@ -105,8 +104,8 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 4.5, -8],
-          "width": 7.6,
+          "position": [0, 1.2, -8],
+          "width": 8.4,
           "accent": "#ffb056",
           "heading": "Goti",
           "subheading": "Agentic Deal-Negotiation Platform",
@@ -167,8 +166,8 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 4.5, -5.5],
-          "width": 7.6,
+          "position": [0, 1.2, -5.5],
+          "width": 8.4,
           "accent": "#5ad1ff",
           "heading": "Sidekick",
           "subheading": "Group-Chat AI Agent",
@@ -210,8 +209,9 @@
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -3] },
-        { "modelId": "podium", "position": [0, 0, -6] },
-        { "modelId": "chalkboard", "position": [0, 0, -8] },
+        { "modelId": "podium", "position": [0, 0, -6.5] },
+        { "modelId": "chalkboard", "position": [-5.5, 0, -6], "rotationY": 0.5 },
+        { "modelId": "chalkboard", "position": [5.5, 0, -6], "rotationY": -0.5 },
         { "modelId": "pillar", "position": [-10, 0, -6] },
         { "modelId": "pillar", "position": [10, 0, -6] },
         { "modelId": "pillar", "position": [-10.5, 0, 3] },
@@ -230,8 +230,8 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 4.3, -9],
-          "width": 7.6,
+          "position": [0, 1.2, -9],
+          "width": 8.6,
           "accent": "#d8b24a",
           "heading": "Santa Clara University",
           "subheading": "B.S. Computer Science · Data Science · Math minor",
@@ -286,8 +286,8 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 4.2, -5.5],
-          "width": 7.8,
+          "position": [0, 1.2, -5.5],
+          "width": 8.8,
           "accent": "#5aa9e6",
           "heading": "Customer Churn Prediction",
           "subheading": "CSCI 184 · Applied Machine Learning",
@@ -345,8 +345,8 @@
       "content": [
         {
           "type": "board",
-          "position": [0, 4.2, -5.5],
-          "width": 7.8,
+          "position": [0, 1.2, -5.5],
+          "width": 9.0,
           "accent": "#e0a93f",
           "heading": "Traveling Salesman Optimization",
           "subheading": "CSCI 147 · Optimization II",

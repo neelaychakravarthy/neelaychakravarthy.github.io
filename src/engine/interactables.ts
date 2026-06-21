@@ -84,8 +84,9 @@ function panelMat(color: THREE.ColorRepresentation, opacity: number) {
  */
 function makeBoard(c: ContentConfig): THREE.Object3D {
   const g = new THREE.Group();
-  g.position.set(...c.position); // position.y is the TOP edge of the board
+  g.position.set(...c.position); // position.y is the BOTTOM edge (hovers above ground)
   if (c.rotationY) g.rotation.y = c.rotationY;
+  const anchorBottom = c.position[1];
 
   const W = c.width ?? 7.4;
   const padX = 0.55;
@@ -95,10 +96,10 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
   const accent = c.accent ?? '#9fb4ff';
   const lines = c.lines ?? [];
 
-  const headingSize = 0.54;
-  const subSize = 0.32;
-  const badgeSize = 0.25;
-  const lineSize = 0.25;
+  const headingSize = 0.5;
+  const subSize = 0.3;
+  const badgeSize = 0.24;
+  const lineSize = 0.24;
 
   // accent bar near the top edge
   const bar = new THREE.Mesh(roundedRect(W - 0.6, 0.09, 0.04), panelMat(accent, 0.9));
@@ -116,6 +117,8 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
     border.position.set(0, cy, -0.07);
     border.renderOrder = -3;
     g.add(backing, border);
+    // Position the whole board so its bottom edge sits at the anchor (above ground).
+    g.position.y = anchorBottom + H;
   };
 
   // Lay elements out top-down, placing each below the *measured* height of the
