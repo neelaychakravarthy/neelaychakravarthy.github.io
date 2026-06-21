@@ -51,6 +51,59 @@ function webgl2Available(): boolean {
   }
 }
 
+function isHandheld(): boolean {
+  try {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const small = Math.min(window.innerWidth, window.innerHeight) < 700;
+    return coarse && small;
+  } catch {
+    return false;
+  }
+}
+
+/** Tiny desktop-only courtesy card for phones/tablets (the world is desktop-only). */
+function showMobileCard() {
+  hideLoader();
+  const wrap = document.createElement('div');
+  wrap.style.cssText =
+    'position:fixed;inset:0;display:grid;place-items:center;z-index:100;padding:22px;overflow:auto;' +
+    'background:radial-gradient(130% 120% at 50% 0%,#1d2d49 0%,#0c1322 72%);' +
+    'font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;';
+  const card = document.createElement('div');
+  card.style.cssText =
+    'max-width:420px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);' +
+    'border-radius:18px;padding:30px 26px;color:#eaf1fb;box-shadow:0 18px 60px rgba(0,0,0,.42);text-align:center;';
+  card.innerHTML =
+    '<div style="font-weight:700;font-size:22px;letter-spacing:.2px;">Neelay Chakravarthy</div>' +
+    '<div style="font-size:14px;color:#9fb4d4;margin-top:6px;">AI Engineer · Agentic AI &amp; Full-Stack</div>' +
+    '<div style="font-size:13.5px;line-height:1.6;color:#c2d0e6;margin:18px 0 22px;">' +
+    'This portfolio is an explorable 3D world, best experienced on a desktop browser. ' +
+    'Open it on a computer to drive around and explore my projects.</div>';
+  const links: Array<[string, string]> = [
+    ['GitHub', 'https://github.com/neelaychakravarthy'],
+    ['LinkedIn', 'https://linkedin.com/in/neelay-chakravarthy'],
+    ['Email', 'mailto:nkchakra2@gmail.com'],
+  ];
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+  for (const [label, url] of links) {
+    const a = document.createElement('a');
+    a.href = url;
+    if (!url.startsWith('mailto:')) {
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+    a.textContent = label;
+    a.style.cssText =
+      'display:block;padding:12px 14px;border-radius:11px;text-decoration:none;font-weight:600;font-size:15px;' +
+      'background:rgba(120,160,230,.18);border:1px solid rgba(150,185,240,.3);color:#eaf1fb;';
+    row.appendChild(a);
+  }
+  card.appendChild(row);
+  wrap.appendChild(card);
+  document.body.appendChild(wrap);
+}
+
 function applySpawn(unit: Unit, spawn?: SpawnConfig) {
   if (!spawn) return;
   unit.object.position.set(...spawn.position);
@@ -58,6 +111,11 @@ function applySpawn(unit: Unit, spawn?: SpawnConfig) {
 }
 
 async function boot() {
+  if (isHandheld()) {
+    showMobileCard();
+    return;
+  }
+
   if (!webgl2Available()) {
     showFatal(
       'WebGL isn’t available in this browser',
@@ -165,22 +223,25 @@ async function boot() {
     });
   }
 
-  // ---- dev HUD ----
-  const stats = new Stats();
-  stats.showPanel(0);
-  stats.dom.style.cssText = 'position:fixed;top:8px;left:8px;z-index:30;';
-  document.body.appendChild(stats.dom);
+  // ---- dev HUD (DEV only; tree-shaken out of production builds) ----
+  let stats: Stats | undefined;
+  if (import.meta.env.DEV) {
+    stats = new Stats();
+    stats.showPanel(0);
+    stats.dom.style.cssText = 'position:fixed;top:8px;left:8px;z-index:30;';
+    document.body.appendChild(stats.dom);
 
-  const gui = new GUI({ title: 'Settings' });
-  const mv = gui.addFolder('Movement');
-  mv.add(unit, 'speed', 1, 20, 0.5);
-  mv.add(unit, 'turnRate', 1, 12, 0.5);
-  const cam = gui.addFolder('Camera');
-  cam.add(rig, 'distance', rig.minDistance, rig.maxDistance, 1).listen();
-  cam.add(rig, 'elevationDeg', 15, 75, 1);
-  cam.add(rig, 'targetHeight', 0, 4, 0.1);
-  cam.add(rig, 'followRate', 1, 16, 0.5);
-  gui.close();
+    const gui = new GUI({ title: 'Settings' });
+    const mv = gui.addFolder('Movement');
+    mv.add(unit, 'speed', 1, 20, 0.5);
+    mv.add(unit, 'turnRate', 1, 12, 0.5);
+    const cam = gui.addFolder('Camera');
+    cam.add(rig, 'distance', rig.minDistance, rig.maxDistance, 1).listen();
+    cam.add(rig, 'elevationDeg', 15, 75, 1);
+    cam.add(rig, 'targetHeight', 0, 4, 0.1);
+    cam.add(rig, 'followRate', 1, 16, 0.5);
+    gui.close();
+  }
 
   // mute toggle
   const muteBtn = document.createElement('button');
@@ -225,7 +286,7 @@ async function boot() {
       hideLoader();
       window.setTimeout(() => document.getElementById('hint')?.classList.add('faded'), 6500);
     }
-    stats.update();
+    stats?.update();
   });
 }
 
