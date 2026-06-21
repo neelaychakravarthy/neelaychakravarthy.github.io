@@ -51,7 +51,7 @@ const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
   { id: 'hub', lines: ["That's me, up on the board.", 'I’m an AI engineer — I build agentic AI, MCP servers, and full-stack systems.'] },
   { id: 'classroom', lines: ['I graduated from Santa Clara in 2024', 'Some of my favorite projects from school are through here.'] },
   { id: 'churn-ml', lines: ['From Applied Machine Learning: predicting customer churn.', 'Here are some snippets from the report. You can check it out on your own after the tour.'] },
-  { id: 'tsp-opt', lines: ['And from Optimization: a traveling-salesman solver.', 'Watch the genetic algorithm settle on the shortest route.'] },
+  { id: 'tsp-opt', lines: ['And from Optimization: a traveling-salesman solver.', 'Watch the genetic algorithm settle into a strong local optimum.'] },
   {
     id: 'goti',
     lead: ['After graduating, I spend my time attending hackathons and building cool projects!', "Let's check out Goti!"],
