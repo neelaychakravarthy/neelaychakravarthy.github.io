@@ -74,7 +74,7 @@ class Layer {
     this.sharedTex = sharedTex;
     scene.add(this.group);
     const c = cfg ?? {};
-    if (c.grass) this.buildGrass(c.grass, c.grassColor ?? '#6fae5a');
+    if (c.grass) this.buildGrass(c.grass, c.grassColor ?? '#6fae5a', c.grassClear ?? []);
     if (c.clouds) this.buildClouds(c.clouds);
     if (c.birds) this.buildBirds(c.birds);
     if (c.particles && c.particles !== 'none') this.buildParticles(c.particles, c.particleCount ?? 70, c.particleColor);
@@ -83,8 +83,29 @@ class Layer {
   }
 
   // ---- builders ----
-  private buildGrass(density: number, color: string) {
-    const count = Math.min(8000, Math.max(1, Math.floor(density * 7000)));
+  private buildGrass(density: number, color: string, clearings: number[][]) {
+    const target = Math.min(8000, Math.max(1, Math.floor(density * 7000)));
+    // collect blade positions, skipping cleared circles (pool deck, etc.)
+    const pts: number[] = [];
+    let attempts = 0;
+    while (pts.length / 2 < target && attempts < target * 4) {
+      attempts++;
+      const a = Math.random() * Math.PI * 2;
+      const r = 8.5 + Math.pow(Math.random(), 0.7) * 18.5;
+      const x = Math.cos(a) * r + (Math.random() - 0.5) * 0.8;
+      const z = Math.sin(a) * r + (Math.random() - 0.5) * 0.8;
+      let blocked = false;
+      for (const c of clearings) {
+        const dx = x - c[0];
+        const dz = z - c[1];
+        if (dx * dx + dz * dz < c[2] * c[2]) {
+          blocked = true;
+          break;
+        }
+      }
+      if (!blocked) pts.push(x, z);
+    }
+    const count = pts.length / 2;
     const geo = new THREE.PlaneGeometry(0.11, BLADE_H, 1, 1);
     geo.translate(0, BLADE_H / 2, 0);
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
@@ -109,12 +130,7 @@ class Layer {
     const base = new THREE.Color(color);
     const col = new THREE.Color();
     for (let i = 0; i < count; i++) {
-      // ring of grass surrounding the central plaza (cleared center)
-      const a = Math.random() * Math.PI * 2;
-      const r = 8.5 + Math.pow(Math.random(), 0.7) * 13.5;
-      const cx = Math.cos(a) * r;
-      const cz = Math.sin(a) * r;
-      dummy.position.set(cx + (Math.random() - 0.5) * 0.8, 0, cz + (Math.random() - 0.5) * 0.8);
+      dummy.position.set(pts[i * 2], 0, pts[i * 2 + 1]);
       dummy.rotation.y = Math.random() * Math.PI;
       dummy.scale.set(0.85 + Math.random() * 0.5, 0.8 + Math.random() * 0.4, 1);
       dummy.updateMatrix();

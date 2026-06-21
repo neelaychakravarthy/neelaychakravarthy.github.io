@@ -88,6 +88,8 @@ export interface AtmosphereConfig {
   /** grass density 0..1 (0 = none, e.g. indoor rooms) */
   grass?: number;
   grassColor?: string;
+  /** circles [x, z, radius] kept grass-free (around pools, decks, etc.) */
+  grassClear?: number[][];
   /** number of drifting clouds */
   clouds?: number;
   /** number of circling birds */
