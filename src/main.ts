@@ -213,6 +213,16 @@ async function boot() {
   for (const b of world.biomes) {
     padGraph.set(b.id, (b.pads ?? []).map((p) => ({ target: p.target, x: p.position[0], z: p.position[2] })));
   }
+  const fadeHint = () => document.getElementById('hint')?.classList.add('faded');
+  // (Re)show the controls hint, then fade it after a few seconds — used on free
+  // roam start and again when the guided tour ends.
+  const showHint = () => {
+    const el = document.getElementById('hint');
+    if (!el) return;
+    el.classList.remove('faded');
+    window.setTimeout(() => el.classList.add('faded'), 6500);
+  };
+
   const tour = new TourController({
     unit,
     audio,
@@ -230,12 +240,9 @@ async function boot() {
     setTourActive: (a) => {
       tourActive = a;
     },
-    onEnd: () => {
-      /* tour over → free roam */
-    },
+    onEnd: showHint, // tour over → free roam: re-show the controls hint
   });
 
-  const fadeHint = () => document.getElementById('hint')?.classList.add('faded');
   function showStartScreen() {
     const action = document.getElementById('loader-action');
     const tip = document.getElementById('loader-tip');
@@ -266,7 +273,7 @@ async function boot() {
       mk('Free roam', false, () => {
         audio.unlock();
         hideLoader();
-        window.setTimeout(fadeHint, 6500);
+        showHint();
       }),
     );
     action.appendChild(row);
