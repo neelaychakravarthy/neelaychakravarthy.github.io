@@ -24,15 +24,15 @@
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -2] },
-        { "modelId": "monument", "position": [0, 0, -7.5] },
+        { "modelId": "university-building", "position": [0, 0, -14.5] },
         { "modelId": "gateway", "position": [-8.5, 0, 1], "rotationY": 0.35 },
         { "modelId": "gateway", "position": [8.5, 0, 1], "rotationY": -0.35 },
-        { "modelId": "pillar", "position": [-11.5, 0, -7] },
-        { "modelId": "pillar", "position": [11.5, 0, -7] },
+        { "modelId": "pillar", "position": [-12, 0, -6] },
+        { "modelId": "pillar", "position": [12, 0, -6] },
         { "modelId": "pillar", "position": [-12.5, 0, 4] },
         { "modelId": "pillar", "position": [12.5, 0, 4] },
-        { "modelId": "planter", "position": [-5.5, 0, -10.5] },
-        { "modelId": "planter", "position": [5.5, 0, -10.5] }
+        { "modelId": "planter", "position": [-4.5, 0, -9.5] },
+        { "modelId": "planter", "position": [4.5, 0, -9.5] }
       ],
       "content": [
         {
@@ -53,7 +53,8 @@
       ],
       "pads": [
         { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },
-        { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 }
+        { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 },
+        { "id": "to-university", "position": [0, 0, -10], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 }
       ]
     },
     {
@@ -186,6 +187,182 @@
       ],
       "pads": [
         { "id": "to-hub", "position": [8.5, 0, 9.5], "target": "hub", "label": "Hub   →", "color": "#ffb056", "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "classroom",
+      "title": "University — Academic Projects",
+      "environment": {
+        "skyTop": "#aecdf0",
+        "skyBottom": "#fbf7ee",
+        "fogColor": "#dfe8e0",
+        "fogNear": 50,
+        "fogFar": 160,
+        "hemiSky": "#e6f0ff",
+        "hemiGround": "#b7b08f",
+        "hemiIntensity": 1.05,
+        "sunColor": "#fff4dc",
+        "sunIntensity": 2.5,
+        "sunPosition": [20, 32, 16],
+        "groundColor": "#c5cda4"
+      },
+      "audio": { "ambientRoot": 233.08, "ambientChord": [0, 5, 7, 12, 16], "ambientWave": "sine", "ambientCutoff": 1000, "ambientGain": 0.15 },
+      "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -3] },
+        { "modelId": "podium", "position": [0, 0, -6] },
+        { "modelId": "chalkboard", "position": [0, 0, -8] },
+        { "modelId": "pillar", "position": [-10, 0, -6] },
+        { "modelId": "pillar", "position": [10, 0, -6] },
+        { "modelId": "pillar", "position": [-10.5, 0, 3] },
+        { "modelId": "pillar", "position": [10.5, 0, 3] },
+        { "modelId": "gateway", "position": [-6.5, 0, 0.5], "rotationY": 0.3 },
+        { "modelId": "gateway", "position": [6.5, 0, 0.5], "rotationY": -0.3 },
+        { "modelId": "desk", "position": [-3, 0, -1.5] },
+        { "modelId": "desk", "position": [0, 0, -1.5] },
+        { "modelId": "desk", "position": [3, 0, -1.5] },
+        { "modelId": "book-stack", "position": [0, 0.81, -1.5] },
+        { "modelId": "planter", "position": [-9, 0, 6] },
+        { "modelId": "planter", "position": [9, 0, 6] },
+        { "modelId": "lamppost", "position": [-7.5, 0, 7] },
+        { "modelId": "lamppost", "position": [7.5, 0, 7] }
+      ],
+      "content": [
+        {
+          "type": "board",
+          "position": [0, 4.3, -9],
+          "width": 7.6,
+          "accent": "#d8b24a",
+          "heading": "Santa Clara University",
+          "subheading": "B.S. Computer Science · Data Science · Math minor",
+          "badge": "Class of 2024",
+          "lines": [
+            "Two academic projects — drive into a classroom to explore",
+            "Applied Machine Learning  ·  Optimization II",
+            "Coursework: Applied ML, Optimization I/II, Algorithms, Data Science"
+          ]
+        }
+      ],
+      "pads": [
+        { "id": "to-churn", "position": [-6.5, 0, 3], "target": "churn-ml", "label": "Applied ML   ↓", "color": "#5aa9e6", "radius": 2.4 },
+        { "id": "to-tsp", "position": [6.5, 0, 3], "target": "tsp-opt", "label": "Optimization   ↓", "color": "#e0a93f", "radius": 2.4 },
+        { "id": "to-hub", "position": [0, 0, 10.5], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "churn-ml",
+      "title": "Customer Churn — Applied ML",
+      "environment": {
+        "skyTop": "#3a4a66",
+        "skyBottom": "#9fb0c8",
+        "fogColor": "#5a6a82",
+        "fogNear": 45,
+        "fogFar": 150,
+        "hemiSky": "#cfe0ff",
+        "hemiGround": "#4a5260",
+        "hemiIntensity": 1.0,
+        "sunColor": "#dce8ff",
+        "sunIntensity": 2.2,
+        "sunPosition": [18, 30, 14],
+        "groundColor": "#5a626f"
+      },
+      "audio": { "ambientRoot": 261.63, "ambientChord": [0, 4, 7, 11, 14], "ambientWave": "triangle", "ambientCutoff": 900, "ambientGain": 0.15 },
+      "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -3] },
+        { "modelId": "chalkboard", "position": [0, 0, -8] },
+        { "modelId": "computer-desk", "position": [-3, 0, 0] },
+        { "modelId": "computer-desk", "position": [0, 0, 0] },
+        { "modelId": "computer-desk", "position": [3, 0, 0] },
+        { "modelId": "computer-desk", "position": [-3, 0, 2.5] },
+        { "modelId": "computer-desk", "position": [0, 0, 2.5] },
+        { "modelId": "computer-desk", "position": [3, 0, 2.5] },
+        { "modelId": "book-stack", "position": [0, 0.83, 0] },
+        { "modelId": "pillar", "position": [-10, 0, -6] },
+        { "modelId": "pillar", "position": [10, 0, -6] },
+        { "modelId": "pillar", "position": [-10.5, 0, 4] },
+        { "modelId": "pillar", "position": [10.5, 0, 4] }
+      ],
+      "content": [
+        {
+          "type": "board",
+          "position": [0, 4.2, -5.5],
+          "width": 7.8,
+          "accent": "#5aa9e6",
+          "heading": "Customer Churn Prediction",
+          "subheading": "CSCI 184 · Applied Machine Learning",
+          "lines": [
+            "Predict telecom customer churn over 7,043 Telco customers",
+            "Logistic Regression · Gaussian Naïve Bayes · Decision Tree",
+            "K-Fold cross-validation for balanced, reliable evaluation"
+          ]
+        },
+        { "type": "panel", "position": [-8.5, 2.6, -2], "rotationY": 0.6, "images": ["/assets/img/churn-1.png", "/assets/img/churn-2.png", "/assets/img/churn-3.png", "/assets/img/churn-4.png"] },
+        { "type": "panel", "position": [8.5, 2.6, -2], "rotationY": -0.6, "images": ["/assets/img/churn-3.png", "/assets/img/churn-4.png", "/assets/img/churn-1.png", "/assets/img/churn-2.png"] },
+        { "type": "link", "label": "Code", "url": "https://github.com/neelaychakravarthy/schoolwork/tree/main/csci%20184%20-%20Applied%20Machine%20Learning/project", "position": [-2.8, 0, 8] },
+        { "type": "link", "label": "Report", "url": "/assets/docs/churn-report.pdf", "tooltip": "Open the report (PDF)  ↗", "position": [2.8, 0, 8] }
+      ],
+      "pads": [
+        { "id": "to-classroom", "position": [0, 0, 10.5], "target": "classroom", "label": "←   Classroom", "color": "#c9d2de", "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "tsp-opt",
+      "title": "Traveling Salesman — Optimization",
+      "environment": {
+        "skyTop": "#caa86a",
+        "skyBottom": "#f3e8cc",
+        "fogColor": "#e6d4ac",
+        "fogNear": 45,
+        "fogFar": 150,
+        "hemiSky": "#ffe9c0",
+        "hemiGround": "#6b5436",
+        "hemiIntensity": 1.0,
+        "sunColor": "#ffe0a0",
+        "sunIntensity": 2.6,
+        "sunPosition": [-18, 30, 14],
+        "groundColor": "#6e5838"
+      },
+      "audio": { "ambientRoot": 196.0, "ambientChord": [0, 5, 7, 12, 17], "ambientWave": "triangle", "ambientCutoff": 820, "ambientGain": 0.15 },
+      "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -3] },
+        { "modelId": "chalkboard", "position": [-5.5, 0, -5], "rotationY": 0.5 },
+        { "modelId": "chalkboard", "position": [5.5, 0, -5], "rotationY": -0.5 },
+        { "modelId": "podium", "position": [0, 0, -6.5] },
+        { "modelId": "desk", "position": [-3, 0, 0.5] },
+        { "modelId": "desk", "position": [0, 0, 0.5] },
+        { "modelId": "desk", "position": [3, 0, 0.5] },
+        { "modelId": "desk", "position": [-3, 0, 3] },
+        { "modelId": "desk", "position": [3, 0, 3] },
+        { "modelId": "book-stack", "position": [-3, 0.81, 0.5] },
+        { "modelId": "book-stack", "position": [3, 0.81, 3] },
+        { "modelId": "pillar", "position": [-10, 0, -6] },
+        { "modelId": "pillar", "position": [10, 0, -6] },
+        { "modelId": "pillar", "position": [-10.5, 0, 4] },
+        { "modelId": "pillar", "position": [10.5, 0, 4] }
+      ],
+      "content": [
+        {
+          "type": "board",
+          "position": [0, 4.2, -5.5],
+          "width": 7.8,
+          "accent": "#e0a93f",
+          "heading": "Traveling Salesman Optimization",
+          "subheading": "CSCI 147 · Optimization II",
+          "lines": [
+            "A novel TSP solver that runs in feasible time at scale",
+            "K-Means clustering + modified Ant Colony Optimization",
+            "+ a modified Genetic Algorithm + a custom uncrossing heuristic"
+          ]
+        },
+        { "type": "panel", "position": [-8.5, 2.6, -2], "rotationY": 0.6, "images": ["/assets/img/tsp-1.png", "/assets/img/tsp-2.png", "/assets/img/tsp-3.png", "/assets/img/tsp-4.png"] },
+        { "type": "panel", "position": [8.5, 2.6, -2], "rotationY": -0.6, "images": ["/assets/img/tsp-3.png", "/assets/img/tsp-4.png", "/assets/img/tsp-1.png", "/assets/img/tsp-2.png"] },
+        { "type": "link", "label": "Code", "url": "https://github.com/neelaychakravarthy/schoolwork/tree/main/csci%20147%20-%20Optimization%20II/project", "position": [-2.8, 0, 8] },
+        { "type": "link", "label": "Report", "url": "/assets/docs/tsp-report.pdf", "tooltip": "Open the report (PDF)  ↗", "position": [2.8, 0, 8] }
+      ],
+      "pads": [
+        { "id": "to-classroom", "position": [0, 0, 10.5], "target": "classroom", "label": "←   Classroom", "color": "#c9d2de", "radius": 2.4 }
       ]
     }
   ]

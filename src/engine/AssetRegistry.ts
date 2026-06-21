@@ -329,6 +329,129 @@ export class AssetRegistry {
       g.add(pole, arm, lamp);
       return g;
     },
+
+    // ---------- university / academic ----------
+    'university-building': () => {
+      const g = new THREE.Group();
+      const stone = std('#e3dcc8', { roughness: 0.85 });
+      const darkStone = std('#cabfa3', { roughness: 0.85 });
+      const base = mesh(new THREE.BoxGeometry(11, 0.6, 6), darkStone);
+      base.position.y = 0.3;
+      const step = mesh(new THREE.BoxGeometry(10, 0.5, 5), stone);
+      step.position.y = 0.85;
+      const floor = mesh(new THREE.BoxGeometry(9.5, 0.4, 4.6), stone);
+      floor.position.y = 1.3;
+      const wall = mesh(new THREE.BoxGeometry(9, 3.4, 0.7), darkStone);
+      wall.position.set(0, 3.2, -1.6);
+      g.add(base, step, floor, wall);
+      for (let i = 0; i < 6; i++) {
+        const col = mesh(new THREE.CylinderGeometry(0.32, 0.36, 3.4, 14), stone);
+        col.position.set(-4 + i * 1.6, 3.2, 1.8);
+        g.add(col);
+      }
+      const entablature = mesh(new THREE.BoxGeometry(9.8, 0.7, 4.6), stone);
+      entablature.position.y = 5.25;
+      const roof = mesh(new THREE.ConeGeometry(6.4, 2.2, 4), darkStone);
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 6.7;
+      g.add(entablature, roof);
+      // clock tower
+      const tower = mesh(new THREE.BoxGeometry(1.7, 2.6, 1.7), stone);
+      tower.position.y = 7.4;
+      const towerRoof = mesh(new THREE.ConeGeometry(1.35, 1.4, 4), darkStone);
+      towerRoof.rotation.y = Math.PI / 4;
+      towerRoof.position.y = 9.1;
+      const clock = mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.12, 18), std('#fff6e0', { emissive: '#ffe6a8', emissiveIntensity: 0.8 }), false);
+      clock.rotation.x = Math.PI / 2;
+      clock.position.set(0, 7.6, 0.9);
+      g.add(tower, towerRoof, clock);
+      // cardinal banners between columns
+      for (const x of [-2.4, 2.4]) {
+        const banner = mesh(new THREE.BoxGeometry(0.7, 1.8, 0.08), std('#9e1b32', { roughness: 0.6 }));
+        banner.position.set(x, 3.5, 2.1);
+        g.add(banner);
+      }
+      return g;
+    },
+    desk: () => {
+      const g = new THREE.Group();
+      const top = mesh(new THREE.BoxGeometry(1.5, 0.1, 0.85), std('#b48a52'));
+      top.position.y = 0.76;
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+        const leg = mesh(new THREE.BoxGeometry(0.1, 0.76, 0.1), std('#6b4f2a'));
+        leg.position.set(sx * 0.64, 0.38, sz * 0.34);
+        g.add(leg);
+      }
+      g.add(top);
+      return g;
+    },
+    'computer-desk': () => {
+      const g = new THREE.Group();
+      const top = mesh(new THREE.BoxGeometry(1.7, 0.1, 0.95), std('#c9cfd6'));
+      top.position.y = 0.78;
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+        const leg = mesh(new THREE.BoxGeometry(0.1, 0.78, 0.1), std('#7d8794'));
+        leg.position.set(sx * 0.72, 0.39, sz * 0.38);
+        g.add(leg);
+      }
+      const stand = mesh(new THREE.BoxGeometry(0.18, 0.35, 0.18), std('#2a3340'));
+      stand.position.set(0, 1.0, -0.12);
+      const bezel = mesh(new THREE.BoxGeometry(1.05, 0.66, 0.06), std('#12161d'));
+      bezel.position.set(0, 1.5, -0.12);
+      const screen = mesh(new THREE.PlaneGeometry(0.92, 0.54), std('#5aa9e6', { emissive: '#5aa9e6', emissiveIntensity: 0.7, roughness: 0.4 }), false);
+      screen.position.set(0, 1.5, -0.085);
+      g.add(top, stand, bezel, screen);
+      return g;
+    },
+    chalkboard: (seed) => {
+      const g = new THREE.Group();
+      const frame = mesh(new THREE.BoxGeometry(3.3, 2.1, 0.12), std('#5a4632'));
+      frame.position.y = 1.85;
+      const board = mesh(new THREE.BoxGeometry(3.0, 1.8, 0.04), std('#26402e', { roughness: 0.95 }));
+      board.position.set(0, 1.85, 0.07);
+      g.add(frame, board);
+      const chalk = std('#e8ece4', { emissive: '#e8ece4', emissiveIntensity: 0.18, roughness: 0.9 });
+      for (let i = 0; i < 4; i++) {
+        const ln = mesh(new THREE.BoxGeometry(1.5 - i * 0.22 - (seed % 2) * 0.2, 0.04, 0.02), chalk, false);
+        ln.position.set(-0.6 + (i % 2) * 0.3, 2.45 - i * 0.34, 0.1);
+        g.add(ln);
+      }
+      const ax1 = mesh(new THREE.BoxGeometry(0.03, 0.85, 0.02), chalk, false);
+      ax1.position.set(0.85, 1.5, 0.1);
+      const ax2 = mesh(new THREE.BoxGeometry(0.85, 0.03, 0.02), chalk, false);
+      ax2.position.set(1.2, 1.1, 0.1);
+      g.add(ax1, ax2);
+      for (const sx of [-1, 1]) {
+        const leg = mesh(new THREE.BoxGeometry(0.1, 0.95, 0.1), std('#5a4632'));
+        leg.position.set(sx * 1.35, 0.47, 0);
+        g.add(leg);
+      }
+      return g;
+    },
+    podium: () => {
+      const g = new THREE.Group();
+      const wood = std('#7d5a36');
+      const stand = mesh(new THREE.CylinderGeometry(0.3, 0.42, 1.1, 8), wood);
+      stand.position.y = 0.55;
+      const top = mesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), wood);
+      top.position.set(0, 1.2, 0.05);
+      top.rotation.x = -0.32;
+      g.add(stand, top);
+      return g;
+    },
+    'book-stack': (seed) => {
+      const g = new THREE.Group();
+      const colors = ['#9e1b32', '#2c5e8a', '#3a7d4f', '#c08a2a', '#5a4632'];
+      let y = 0;
+      for (let i = 0; i < 4; i++) {
+        const b = mesh(new THREE.BoxGeometry(0.72 - i * 0.05, 0.16, 0.52), std(colors[(seed + i) % colors.length]));
+        b.position.set((i % 2) * 0.06 - 0.03, y + 0.08, 0);
+        b.rotation.y = (i % 2) * 0.12;
+        g.add(b);
+        y += 0.16;
+      }
+      return g;
+    },
   };
 
   create(modelId: string, seed = 0): THREE.Object3D {

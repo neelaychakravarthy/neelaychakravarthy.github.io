@@ -105,28 +105,7 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
   bar.position.set(0, -0.26, 0.01);
   g.add(bar);
 
-  // lay text out downward from the top edge (local y = 0)
-  let y = -padTop;
-  const place = (text: string, size: number, color: THREE.ColorRepresentation, bold = false) => {
-    const t = makeTroika(text, size, color, bold);
-    t.anchorY = 'top';
-    t.maxWidth = innerW;
-    t.position.set(0, y, 0.02);
-    t.sync();
-    g.add(t);
-    y -= size * 1.34;
-  };
-
-  place(c.heading ?? '', headingSize, '#ffffff', true);
-  y -= 0.06;
-  if (c.subheading) place(c.subheading, subSize, '#d7e2f0');
-  if (c.badge) {
-    y -= 0.05;
-    place(c.badge, badgeSize, accent);
-  }
-  y -= 0.22;
-
-  // The backing is sized to the *measured* body height (robust to wrapping).
+  // The backing is sized to the *measured* content (robust to any wrapping).
   const buildBacking = (bottomY: number) => {
     const H = -bottomY + padBottom;
     const cy = -H / 2;
@@ -139,21 +118,42 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
     g.add(backing, border);
   };
 
-  if (lines.length) {
-    const body = makeTroika(lines.join('\n'), lineSize, '#ccd7e6');
-    body.anchorY = 'top';
-    body.lineHeight = 1.55;
-    body.maxWidth = innerW;
-    body.position.set(0, y, 0.02);
-    body.sync(() => {
-      const bb = (body as unknown as { textRenderInfo?: { blockBounds: number[] } }).textRenderInfo?.blockBounds;
-      const bodyH = bb ? bb[3] - bb[1] : lines.length * lineSize * 1.55;
-      buildBacking(y - bodyH);
-    });
-    g.add(body);
-  } else {
-    buildBacking(y);
+  // Lay elements out top-down, placing each below the *measured* height of the
+  // previous one — so wrapped headings/subheadings never overlap.
+  interface BoardItem {
+    text: string;
+    size: number;
+    color: THREE.ColorRepresentation;
+    bold?: boolean;
+    gap: number;
+    lineHeight?: number;
   }
+  const items: BoardItem[] = [{ text: c.heading ?? '', size: headingSize, color: '#ffffff', bold: true, gap: 0.1 }];
+  if (c.subheading) items.push({ text: c.subheading, size: subSize, color: '#d7e2f0', gap: 0.1 });
+  if (c.badge) items.push({ text: c.badge, size: badgeSize, color: accent, gap: 0.1 });
+  if (lines.length) items.push({ text: lines.join('\n'), size: lineSize, color: '#ccd7e6', gap: 0.2, lineHeight: 1.55 });
+
+  let y = -padTop;
+  const layoutNext = (i: number) => {
+    if (i >= items.length) {
+      buildBacking(y);
+      return;
+    }
+    const it = items[i];
+    y -= it.gap;
+    const t = makeTroika(it.text, it.size, it.color, it.bold);
+    t.anchorY = 'top';
+    t.maxWidth = innerW;
+    if (it.lineHeight) t.lineHeight = it.lineHeight;
+    t.position.set(0, y, 0.02);
+    g.add(t);
+    t.sync(() => {
+      const bb = (t as unknown as { textRenderInfo?: { blockBounds: number[] } }).textRenderInfo?.blockBounds;
+      y -= bb ? bb[3] - bb[1] : it.size * 1.34;
+      layoutNext(i + 1);
+    });
+  };
+  layoutNext(0);
 
   g.userData.billboard = true;
   return g;
@@ -271,13 +271,23 @@ function makePanel(c: ContentConfig, isScreen: boolean): THREE.Object3D {
     g.add(inner);
   } else if (hasImages) {
     const loader = new THREE.TextureLoader();
-    const texes = (c.images as string[]).map((src) => {
-      const t = loader.load(src);
+    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), new THREE.MeshBasicMaterial({ map: null, transparent: true }));
+    inner.position.set(0, cy, 0.09);
+    // Fit the plane to the first image's aspect (letterbox) so plots/screens aren't stretched.
+    const fit = (img: { width: number; height: number }) => {
+      const ia = img.width / img.height;
+      const fa = IW / IH;
+      if (ia > fa) inner.scale.set(1, fa / ia, 1);
+      else inner.scale.set(ia / fa, 1, 1);
+    };
+    const texes = (c.images as string[]).map((src, idx) => {
+      const t = loader.load(src, (tex) => {
+        if (idx === 0 && tex.image) fit(tex.image as { width: number; height: number });
+      });
       t.colorSpace = THREE.SRGBColorSpace;
       return t;
     });
-    const inner = new THREE.Mesh(new THREE.PlaneGeometry(IW, IH), new THREE.MeshBasicMaterial({ map: texes[0], transparent: true }));
-    inner.position.set(0, cy, 0.09);
+    (inner.material as THREE.MeshBasicMaterial).map = texes[0];
     if (texes.length > 1) inner.userData.gallery = { texes, idx: 0, t: 0, phase: 'hold', fadeT: 0 };
     g.add(inner);
   } else {
