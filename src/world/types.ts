@@ -80,13 +80,18 @@ export interface SpawnConfig {
   rotationY?: number;
 }
 
-/** Procedural ambient-pad descriptor (synthesized per biome, crossfaded on morph). */
+/** Procedural ambient-music descriptor (synthesized per biome, crossfaded on morph). */
 export interface AmbientConfig {
+  /** Music preset name (see MUSIC_PRESETS): mood/scale/tempo/timbre. */
+  music?: string;
+  /** Key root frequency (the scale's tonic), e.g. 261.63 = C4. */
   ambientRoot?: number;
+  /** Overall music level (0..1). */
+  ambientGain?: number;
+  // legacy pad fields (kept for back-compat; no longer used by the engine):
   ambientChord?: number[];
   ambientWave?: OscillatorType;
   ambientCutoff?: number;
-  ambientGain?: number;
 }
 
 /** Procedural ambient *atmosphere* (grass, sky, creatures, particles). */
