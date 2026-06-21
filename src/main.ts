@@ -4,6 +4,7 @@ import Stats from 'stats.js';
 import GUI from 'lil-gui';
 import { Engine } from './engine/Engine';
 import { MorphFX } from './engine/MorphFX';
+import { Atmosphere } from './engine/Atmosphere';
 import { EnvironmentController } from './engine/EnvironmentController';
 import { CameraRig } from './engine/CameraRig';
 import { Unit } from './engine/Unit';
@@ -93,6 +94,9 @@ async function boot() {
     (o) => engine.postfx.removeGlow(o),
   );
 
+  const atmosphere = new Atmosphere(engine.scene);
+  atmosphere.setBiome(start.config.atmosphere);
+
   const rig = new CameraRig(engine.camera, engine.renderer.domElement);
   // gentle intro: ease the camera in from slightly further out
   const restDistance = rig.distance;
@@ -138,6 +142,7 @@ async function boot() {
     const from = biomes.current;
     const to = biomes.build(target, true);
     audio.setBiome(to.config.audio);
+    atmosphere.setBiome(to.config.atmosphere);
     engine.postfx.setSelection([...from.glows, ...to.glows]);
     const spawn = to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
     transition.morph({
@@ -210,6 +215,7 @@ async function boot() {
     click.update(dt, unit.hasTarget && !locked);
     rig.update(dt, unit.position);
     fx.update(dt);
+    atmosphere.update(dt);
     biomes.update(dt, engine.camera, unit.position);
 
     if (firstFrame) {

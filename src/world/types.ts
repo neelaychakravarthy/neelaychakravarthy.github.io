@@ -83,6 +83,23 @@ export interface AmbientConfig {
   ambientGain?: number;
 }
 
+/** Procedural ambient *atmosphere* (grass, sky, creatures, particles). */
+export interface AtmosphereConfig {
+  /** grass density 0..1 (0 = none, e.g. indoor rooms) */
+  grass?: number;
+  grassColor?: string;
+  /** number of drifting clouds */
+  clouds?: number;
+  /** number of circling birds */
+  birds?: number;
+  /** floating particle style */
+  particles?: 'pollen' | 'fireflies' | 'dust' | 'none';
+  particleColor?: string;
+  particleCount?: number;
+  /** number of stars (night skies) */
+  stars?: number;
+}
+
 export interface BiomeConfig {
   id: string;
   title: string;
@@ -92,6 +109,7 @@ export interface BiomeConfig {
   content?: ContentConfig[];
   pads?: PadConfig[];
   audio?: AmbientConfig;
+  atmosphere?: AtmosphereConfig;
 }
 
 export interface WorldConfig {

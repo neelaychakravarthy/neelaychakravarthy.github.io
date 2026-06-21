@@ -18,9 +18,10 @@
         "sunColor": "#fff6e8",
         "sunIntensity": 2.6,
         "sunPosition": [24, 34, 18],
-        "groundColor": "#e7edf4"
+        "groundColor": "#8bb06a"
       },
       "audio": { "ambientRoot": 261.63, "ambientChord": [0, 7, 12, 16, 19], "ambientWave": "sine", "ambientCutoff": 1200, "ambientGain": 0.16 },
+      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -2] },
@@ -74,6 +75,7 @@
         "groundColor": "#ead2a6"
       },
       "audio": { "ambientRoot": 196.0, "ambientChord": [0, 7, 10, 15, 19], "ambientWave": "triangle", "ambientCutoff": 820, "ambientGain": 0.16 },
+      "atmosphere": { "clouds": 4, "birds": 2, "particles": "dust", "particleColor": "#ffe0a8", "particleCount": 60 },
       "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -3] },
@@ -144,6 +146,7 @@
         "groundColor": "#2c3550"
       },
       "audio": { "ambientRoot": 220.0, "ambientChord": [0, 3, 7, 10, 14], "ambientWave": "sine", "ambientCutoff": 660, "ambientGain": 0.15 },
+      "atmosphere": { "particles": "fireflies", "particleColor": "#7dffd6", "particleCount": 80, "stars": 240 },
       "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "hub-core", "position": [0, 0, -8] },
@@ -203,9 +206,10 @@
         "sunColor": "#fff4dc",
         "sunIntensity": 2.5,
         "sunPosition": [20, 32, 16],
-        "groundColor": "#c5cda4"
+        "groundColor": "#86a862"
       },
       "audio": { "ambientRoot": 233.08, "ambientChord": [0, 5, 7, 12, 16], "ambientWave": "sine", "ambientCutoff": 1000, "ambientGain": 0.15 },
+      "atmosphere": { "grass": 0.9, "grassColor": "#7eb96a", "clouds": 5, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 60 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -3] },
@@ -267,6 +271,7 @@
         "groundColor": "#5a626f"
       },
       "audio": { "ambientRoot": 261.63, "ambientChord": [0, 4, 7, 11, 14], "ambientWave": "triangle", "ambientCutoff": 900, "ambientGain": 0.15 },
+      "atmosphere": { "particles": "dust", "particleColor": "#9fc6ff", "particleCount": 45 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -3] },
@@ -324,6 +329,7 @@
         "groundColor": "#6e5838"
       },
       "audio": { "ambientRoot": 196.0, "ambientChord": [0, 5, 7, 12, 17], "ambientWave": "triangle", "ambientCutoff": 820, "ambientGain": 0.15 },
+      "atmosphere": { "particles": "dust", "particleColor": "#ffe8c0", "particleCount": 45 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -3] },
