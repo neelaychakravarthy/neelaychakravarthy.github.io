@@ -8,6 +8,8 @@ import { Atmosphere } from './engine/Atmosphere';
 import { EnvironmentController } from './engine/EnvironmentController';
 import { CameraRig } from './engine/CameraRig';
 import { FocusController } from './engine/FocusController';
+import { TireFX } from './engine/TireFX';
+import { DolphinFX } from './engine/DolphinFX';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
 import { AssetRegistry } from './engine/AssetRegistry';
@@ -169,6 +171,10 @@ async function boot() {
   const focus = new FocusController(engine.camera);
   focus.setBiome(start.focusables);
 
+  const tireFX = new TireFX(engine.scene);
+  const dolphins = new DolphinFX(engine.scene);
+  dolphins.setRiver(start.river);
+
   const transition = new TransitionController();
   const interaction = new InteractionManager();
   interaction.setBiome(start.pads, unit.position);
@@ -238,6 +244,7 @@ async function boot() {
         focus.setBiome(to.focusables);
         unit.colliders = to.colliders;
         unit.river = to.river;
+        dolphins.setRiver(to.river);
         engine.postfx.setSelection(to.glows);
         locked = false;
       },
@@ -314,6 +321,8 @@ async function boot() {
     const focusOverride = focus.update(dt, unit.position, !locked && !unit.hasTarget);
     rig.update(dt, unit.position, focusOverride);
     fx.update(dt);
+    tireFX.update(dt, unit);
+    dolphins.update(dt, unit.position.x);
     atmosphere.update(dt, unit.position.x, unit.position.z);
     biomes.update(dt, engine.camera, unit.position);
 

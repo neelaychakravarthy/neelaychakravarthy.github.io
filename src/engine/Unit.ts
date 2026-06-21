@@ -73,6 +73,11 @@ export class Unit {
     return this.target !== null;
   }
 
+  /** Current forward speed (world units / second) — for the tire dust FX. */
+  get currentSpeed(): number {
+    return this.velocity;
+  }
+
   setTarget(p: THREE.Vector3) {
     this.target = p.clone();
     this.target.y = 0;

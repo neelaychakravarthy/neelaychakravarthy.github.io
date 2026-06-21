@@ -650,7 +650,8 @@ export class AssetRegistry {
       s2.position.set(17, 15.5, 7);
       s2.rotation.y = 0.8;
       g.add(m1, s1, m2, s2);
-      // ski lift up the front slope
+      // ski lift up the front slope — chairs loop up the front cable and down
+      // the back one (animated each frame via userData.skiLift).
       const liftMat = std('#3a3f48');
       const bottom = new THREE.Vector3(-3, 1.2, 19);
       const top = new THREE.Vector3(0, 18, 4);
@@ -660,15 +661,26 @@ export class AssetRegistry {
         tower.position.set(p.x, p.y + 0.3, p.z);
         g.add(tower);
       }
-      g.add(connect(bottom.clone().setY(bottom.y + 1.3), top.clone().setY(top.y + 1.3), 0.04, std('#23272e')));
-      for (let i = 0; i < 5; i++) {
-        const p = bottom.clone().lerp(top, 0.1 + i * 0.2).add(new THREE.Vector3(0, 1.3, 0));
+      const cableMat = std('#23272e');
+      const back = new THREE.Vector3(0, 0, 1.5); // parallel return cable
+      const ftBottom = bottom.clone().setY(bottom.y + 1.3);
+      const ftTop = top.clone().setY(top.y + 1.3);
+      const bkBottom = ftBottom.clone().add(back);
+      const bkTop = ftTop.clone().add(back);
+      g.add(connect(ftBottom, ftTop, 0.04, cableMat));
+      g.add(connect(bkBottom, bkTop, 0.04, cableMat));
+      const chairs: THREE.Group[] = [];
+      for (let i = 0; i < 8; i++) {
+        const c = new THREE.Group();
         const hanger = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), liftMat, false);
-        hanger.position.set(p.x, p.y - 0.2, p.z);
-        const chair = mesh(new THREE.BoxGeometry(0.5, 0.1, 0.35), std('#e0a93f'), false);
-        chair.position.set(p.x, p.y - 0.45, p.z);
-        g.add(hanger, chair);
+        hanger.position.y = -0.2;
+        const seat = mesh(new THREE.BoxGeometry(0.5, 0.1, 0.35), std('#e0a93f'), false);
+        seat.position.y = -0.45;
+        c.add(hanger, seat);
+        g.add(c);
+        chairs.push(c);
       }
+      g.userData.skiLift = { ftBottom, ftTop, bkBottom, bkTop, chairs, speed: 0.05 };
       return g;
     },
   };

@@ -45,6 +45,7 @@ export interface BuiltBiome {
   focusables: THREE.Object3D[];
   colliders: Collider[];
   river: RiverBlock | null;
+  skiLifts: THREE.Object3D[];
 }
 
 function buildBiome(
@@ -103,6 +104,7 @@ function buildBiome(
   const glows: THREE.Object3D[] = [];
   const waters: THREE.Object3D[] = [];
   const focusables: THREE.Object3D[] = [];
+  const skiLifts: THREE.Object3D[] = [];
   group.traverse((o) => {
     if (o.userData.url !== undefined) clickables.push(o);
     if (o.userData.billboard) billboards.push(o);
@@ -111,6 +113,7 @@ function buildBiome(
     if (o.userData.video) videos.push(o);
     if (o.userData.water) waters.push(o);
     if (o.userData.focus) focusables.push(o);
+    if (o.userData.skiLift) skiLifts.push(o);
     if (o instanceof THREE.Mesh) {
       const mat = (Array.isArray(o.material) ? o.material[0] : o.material) as THREE.MeshStandardMaterial;
       const e = mat?.emissive;
@@ -145,7 +148,7 @@ function buildBiome(
     : null;
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders, river };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders, river, skiLifts };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {
@@ -303,6 +306,18 @@ export class BiomeManager {
       const mat = (o as THREE.Mesh).material as THREE.Material;
       const shader = mat.userData.shader as { uniforms: { uTime: { value: number } } } | undefined;
       if (shader) shader.uniforms.uTime.value = this.elapsed;
+    }
+    for (const o of b.skiLifts) {
+      const L = o.userData.skiLift as {
+        ftBottom: THREE.Vector3; ftTop: THREE.Vector3; bkBottom: THREE.Vector3; bkTop: THREE.Vector3;
+        chairs: THREE.Group[]; speed: number;
+      };
+      const n = L.chairs.length;
+      for (let i = 0; i < n; i++) {
+        const ph = (i / n + this.elapsed * L.speed) % 1; // 0..1 around the loop
+        if (ph < 0.5) L.chairs[i].position.lerpVectors(L.ftBottom, L.ftTop, ph * 2); // up the front
+        else L.chairs[i].position.lerpVectors(L.bkTop, L.bkBottom, (ph - 0.5) * 2); // down the back
+      }
     }
   }
 }
