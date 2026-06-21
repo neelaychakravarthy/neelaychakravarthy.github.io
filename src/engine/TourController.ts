@@ -49,7 +49,7 @@ const WELCOME = [
 // re-routes itself over the pad graph.
 const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
   { id: 'hub', lines: ["That's me, up on the board.", 'I’m an AI engineer — I build agentic AI, MCP servers, and full-stack systems.'] },
-  { id: 'classroom', lines: ['I graduated from Santa Clara in 2024', 'Some of my favorite projects from school are through here.'] },
+  { id: 'classroom', lines: ['I graduated from Santa Clara in 2024.', 'Some of my favorite projects from school are through here.'] },
   { id: 'churn-ml', lines: ['From Applied Machine Learning: predicting customer churn.', 'Here are some snippets from the report. You can check it out on your own after the tour.'] },
   { id: 'tsp-opt', lines: ['And from Optimization: a traveling-salesman solver.', 'Watch the genetic algorithm settle into a strong local optimum.'] },
   {
@@ -61,14 +61,14 @@ const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
       "Let's check out another hackathon project!",
     ],
   },
-  { id: 'sidekick', lines: ['Sidekick. A group-chat AI agent that lives in your Telegram and iMessage threads.', "It won the Eazo regional — that's the promotional video playing."] },
+  { id: 'sidekick', lines: ['Sidekick. A group-chat AI agent that lives in your Telegram and iMessage threads.', "It was an Eazo regional finalist — that's the promotional video playing."] },
   {
     id: 'chakra',
-    lead: ['One more — and this one means the most to me.', "Let's head into Chakra."],
+    lead: ['One more.', "Let's head into Chakra."],
     lines: [
-      'Chakra started as a bill-of-materials and inventory system for my family’s manufacturing business.',
+      'Chakra started as a bill-of-materials and inventory system for my family’s small manufacturing business.',
       'I grew it into a multi-tenant SaaS that models the whole operation as clean, structured data.',
-      'And that’s the real idea — it’s the foundational layer that lets a manufacturer become AI-native.',
+      'Perfect as the foundational layer to let a manufacturer become AI-native.',
     ],
   },
 ];
