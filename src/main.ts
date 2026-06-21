@@ -11,6 +11,7 @@ import { FocusController } from './engine/FocusController';
 import { TireFX } from './engine/TireFX';
 import { DolphinFX } from './engine/DolphinFX';
 import { Minimap } from './engine/Minimap';
+import { TourController, type PadLink } from './engine/TourController';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
 import { AssetRegistry } from './engine/AssetRegistry';
@@ -136,6 +137,7 @@ async function boot() {
   window.addEventListener('pagehide', () => engine.dispose(), { once: true });
 
   let locked = false;
+  let tourActive = false;
 
   const audio = new AudioManager();
   audio.setBiome(start.config.audio);
@@ -157,7 +159,7 @@ async function boot() {
         window.open(url, '_blank', 'noopener');
       }
     },
-    isLocked: () => locked,
+    isLocked: () => locked || tourActive,
   });
 
   function triggerMorph(target: string) {
@@ -204,6 +206,70 @@ async function boot() {
         locked = false;
       },
     });
+  }
+
+  // ---- guided tour ----
+  const padGraph = new Map<string, PadLink[]>();
+  for (const b of world.biomes) {
+    padGraph.set(b.id, (b.pads ?? []).map((p) => ({ target: p.target, x: p.position[0], z: p.position[2] })));
+  }
+  const tour = new TourController({
+    unit,
+    audio,
+    focus,
+    rig,
+    morphTo: triggerMorph,
+    currentBiomeId: () => biomes.current?.id,
+    isLocked: () => locked,
+    getFocusables: () => biomes.current?.focusables ?? [],
+    getSpawn: () => {
+      const s = biomes.current?.config.spawn?.position ?? [0, 0, 12];
+      return { x: s[0], z: s[2] };
+    },
+    padGraph,
+    setTourActive: (a) => {
+      tourActive = a;
+    },
+    onEnd: () => {
+      /* tour over → free roam */
+    },
+  });
+
+  const fadeHint = () => document.getElementById('hint')?.classList.add('faded');
+  function showStartScreen() {
+    const action = document.getElementById('loader-action');
+    const tip = document.getElementById('loader-tip');
+    if (tip) tip.textContent = 'an explorable 3D portfolio';
+    if (!action) {
+      hideLoader();
+      return;
+    }
+    action.innerHTML = '';
+    const mk = (label: string, primary: boolean, fn: () => void) => {
+      const b = document.createElement('button');
+      b.className = 'start-btn' + (primary ? ' primary' : '');
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      return b;
+    };
+    const row = document.createElement('div');
+    row.className = 'start-row';
+    row.appendChild(
+      mk('▶  Guided tour', true, () => {
+        audio.unlock();
+        hideLoader();
+        fadeHint();
+        tour.start();
+      }),
+    );
+    row.appendChild(
+      mk('Free roam', false, () => {
+        audio.unlock();
+        hideLoader();
+        window.setTimeout(fadeHint, 6500);
+      }),
+    );
+    action.appendChild(row);
   }
 
   // ---- dev HUD (DEV only; tree-shaken out of production builds) ----
@@ -263,9 +329,10 @@ async function boot() {
   }, 8000);
 
   engine.start((dt) => {
+    tour.update(dt); // resolve tour steps (may set a new drive target) before the unit moves
     if (!locked) {
       unit.update(dt);
-      interaction.update(unit.position, triggerMorph);
+      if (!tourActive) interaction.update(unit.position, triggerMorph); // tour morphs explicitly
     }
     // Seamless toroidal world: draw content at its nearest image to the unit and
     // recentre the ground/sky/sun on the unit, so every direction loops back.
@@ -287,8 +354,7 @@ async function boot() {
       firstFrame = false;
       rendered = true;
       window.clearTimeout(watchdog);
-      hideLoader();
-      window.setTimeout(() => document.getElementById('hint')?.classList.add('faded'), 6500);
+      showStartScreen();
     }
     stats?.update();
   });

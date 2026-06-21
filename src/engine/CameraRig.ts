@@ -29,6 +29,8 @@ export class CameraRig {
   maxDistance = 55;
   /** How quickly the camera catches up to the focus (higher = snappier). */
   followRate = 6;
+  /** When false, user zoom/orbit input is ignored (e.g. during the guided tour). */
+  enabled = true;
 
   private readonly target = new THREE.Vector3();
   private readonly lookTarget = new THREE.Vector3();
@@ -57,6 +59,7 @@ export class CameraRig {
 
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
+    if (!this.enabled) return;
     const factor = Math.exp(e.deltaY * 0.0012);
     this.distance = THREE.MathUtils.clamp(
       this.distance * factor,
@@ -66,6 +69,7 @@ export class CameraRig {
   };
 
   private onPointerDown = (e: PointerEvent) => {
+    if (!this.enabled) return;
     if (e.pointerType === 'mouse') {
       if (e.button !== 2) return; // right-drag orbits; left is free for move
       this.dragging = true;

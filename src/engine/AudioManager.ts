@@ -79,6 +79,24 @@ export class AudioManager {
     this.blip(660, 0.16, 'sine', 0.12, 880);
   }
 
+  /** A soft per-character tick for the guided-tour caption typewriter. */
+  typeTick() {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'square';
+    o.frequency.value = 1500 + Math.random() * 600;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.03, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    o.connect(g);
+    g.connect(this.master);
+    o.start(t);
+    o.stop(t + 0.06);
+    o.onended = () => g.disconnect();
+  }
+
   /** Rising tone + filtered-noise whoosh for the world-morph. */
   morph() {
     if (!this.ctx || !this.master) return;

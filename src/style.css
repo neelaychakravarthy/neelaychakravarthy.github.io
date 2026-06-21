@@ -95,5 +95,78 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ---- start screen (Guided tour / Free roam) ---- */
+#loader-action { min-height: 46px; display: grid; place-items: center; }
+.start-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.start-btn {
+  font-family: var(--ui-font);
+  font-size: 15px;
+  font-weight: 650;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(40, 70, 110, 0.22);
+  background: rgba(255, 255, 255, 0.7);
+  color: #25425f;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.start-btn:hover { transform: translateY(-1px); }
+.start-btn.primary {
+  background: linear-gradient(180deg, #3f86c4, #2f6fb0);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(45, 110, 175, 0.34);
+}
+
+/* ---- guided-tour caption (subtitles) ---- */
+#tour-caption {
+  position: fixed;
+  left: 50%;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: min(760px, calc(100vw - 40px));
+  padding: 12px 22px;
+  border-radius: 14px;
+  background: rgba(10, 18, 32, 0.74);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f3f8ff;
+  font-size: clamp(15px, 2.6vw, 19px);
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 25;
+}
+#tour-caption.show { opacity: 1; }
+#tour-caption::after { content: '▌'; opacity: 0.6; margin-left: 1px; animation: caret 0.9s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+
+/* ---- skip-tour button ---- */
+#tour-skip {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  right: calc(14px + env(safe-area-inset-right));
+  display: none;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 32, 48, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f2f7ff;
+  cursor: pointer;
+  z-index: 26;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* lil-gui placement tweak */
 .lil-gui.root { z-index: 20; }

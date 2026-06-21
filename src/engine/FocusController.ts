@@ -95,6 +95,11 @@ export class FocusController {
     this.cooldown = 0;
   }
 
+  /** True once the camera has zoomed in on a piece of content (for the tour). */
+  get zoomedIn(): boolean {
+    return this.weight > 0.75;
+  }
+
   private horizDist(a: THREE.Vector3, b: THREE.Vector3): number {
     return Math.hypot(a.x - b.x, a.z - b.z);
   }
