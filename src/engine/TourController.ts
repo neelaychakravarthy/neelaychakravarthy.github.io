@@ -48,34 +48,70 @@ const WELCOME = [
 // before this one (used for a transition aside). Reorder freely; navigation
 // re-routes itself over the pad graph.
 const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
-  { id: 'hub', lines: ["That's me, up on the board.", 'I’m an AI engineer — I build agentic AI, MCP servers, and full-stack systems.'] },
-  { id: 'classroom', lines: ['I graduated from Santa Clara in 2024.', 'Some of my favorite projects from school are through here.'] },
-  { id: 'churn-ml', lines: ['From Applied Machine Learning: predicting customer churn.', 'Here are some snippets from the report. You can check it out on your own after the tour.'] },
-  { id: 'tsp-opt', lines: ['And from Optimization: a traveling-salesman solver.', 'Watch the genetic algorithm settle into a strong local optimum.'] },
   {
-    id: 'goti',
-    lead: ['After graduating, I spend my time attending hackathons and building cool projects!', "Let's check out Goti!"],
+    id: 'hub',
     lines: [
-      'Goti is a crew of AI agents that negotiate deals for you across marketplaces.',
-      'We took third at the AgentForge hackathon — here are some snippets of the product',
-      "Let's check out another hackathon project!",
+      "That's me, up on the board.",
+      "I'm an AI engineer — I design and ship agentic systems, MCP servers, and the full-stack products around them.",
     ],
   },
-  { id: 'sidekick', lines: ['Sidekick. A group-chat AI agent that lives in your Telegram and iMessage threads.', "It was an Eazo regional finalist — that's the promotional video playing."] },
+  {
+    id: 'classroom',
+    lines: [
+      'Santa Clara, class of 2024.',
+      'Computer science with a data-science focus and a math minor. A few favorite projects are just through here.',
+    ],
+  },
+  {
+    id: 'churn-ml',
+    lines: [
+      'From Applied Machine Learning — a telecom churn predictor.',
+      "Logistic regression, naïve Bayes, and decision trees, cross-validated with k-fold. The full report's here to dig into.",
+    ],
+  },
+  {
+    id: 'tsp-opt',
+    lines: [
+      'And from Optimization — a traveling-salesman solver.',
+      'A hybrid of clustering, ant-colony, and genetic search. Watch the genetic stage settle into a strong local optimum.',
+    ],
+  },
+  {
+    id: 'goti',
+    lead: [
+      'Outside of work, I build constantly — hackathons, side projects, whatever pulls me in.',
+      "Let's start with Goti.",
+    ],
+    lines: [
+      'Goti — a crew of AI agents that negotiate deals for you.',
+      'Hand it a plain-English goal; eight reasoners run human-approved negotiations across four marketplaces, using leverage from one deal to win the next. Third place at AgentForge.',
+      'Snippets are here — then on to the next build.',
+    ],
+  },
+  {
+    id: 'sidekick',
+    lines: [
+      'Sidekick — a group-chat agent for your Telegram and iMessage threads.',
+      "An analyzer-to-executor pipeline with per-group memory and debouncing for realistic messaging patterns. Regional finalist at the Global Eazo hackathon — that's the promo video playing.",
+    ],
+  },
   {
     id: 'chakra',
-    lead: ['One more.', "Let's head into Chakra."],
+    lead: [
+      'One more.',
+      "Let's head into Chakra.",
+    ],
     lines: [
-      'Chakra started as a bill-of-materials and inventory system for my family’s small manufacturing business.',
-      'I grew it into a multi-tenant SaaS that models the whole operation as clean, structured data.',
-      'Perfect as the foundational layer to let a manufacturer become AI-native.',
+      "Chakra began as a bill-of-materials and inventory system for my family's small manufacturing business.",
+      'I grew it into a multi-tenant SaaS that models the entire operation as clean, structured data — tenant isolation, a transactional inventory engine, with a consumption engine for operations.',
+      'The foundation a manufacturer needs to go AI-native.',
     ],
   },
 ];
 const CLOSING = [
-  "And that’s the tour.",
-  'The rest is yours — there’s a pool, a beach, and a mountain out there to find.',
-  'Thanks for riding along!',
+  "And that's the tour.",
+  "The rest is yours — there's a pool, a beach, and a mountain still out there to find.",
+  'Thanks for riding along.',
 ];
 
 export class TourController {
