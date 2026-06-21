@@ -5,6 +5,7 @@ import type { AssetRegistry } from './AssetRegistry';
 import { EnvironmentController } from './EnvironmentController';
 import { makeContent, makePad } from './interactables';
 import { wrapNearest } from './wrap';
+import type { Collider } from './Unit';
 
 /** How far (world units) structures drop below ground when sunk during a morph. */
 export const MORPH_SINK = 10;
@@ -42,6 +43,7 @@ export interface BuiltBiome {
   glows: THREE.Object3D[];
   waters: THREE.Object3D[];
   focusables: THREE.Object3D[];
+  colliders: Collider[];
 }
 
 function buildBiome(
@@ -65,12 +67,26 @@ function buildBiome(
     });
   };
 
+  const colliders: Collider[] = [];
   (config.structures ?? []).forEach((s, i) => {
     const obj = registry.create(s.modelId, i);
     obj.position.set(...s.position);
     if (s.rotationY) obj.rotation.y = s.rotationY;
     if (s.scale) obj.scale.setScalar(s.scale);
     if (s.backdrop) obj.userData.backdrop = true;
+    if (s.collider) {
+      const r = s.rotationY ?? 0;
+      const sc = s.scale ?? 1;
+      const dx = (s.collider.dx ?? 0) * sc;
+      const dz = (s.collider.dz ?? 0) * sc;
+      colliders.push({
+        ax: s.position[0],
+        az: s.position[2],
+        dx: dx * Math.cos(r) + dz * Math.sin(r),
+        dz: -dx * Math.sin(r) + dz * Math.cos(r),
+        radius: s.collider.radius * sc,
+      });
+    }
     addItem(obj);
   });
 
@@ -124,7 +140,7 @@ function buildBiome(
   }
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {

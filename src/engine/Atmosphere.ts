@@ -14,6 +14,17 @@ import { wrapNearest } from './wrap';
 
 const BLADE_H = 0.45;
 
+/** Keep `v` within ±bound of `center`, wrapping by 2·bound — so a world-anchored
+ *  element stays near the unit (coverage) while only drifting by its own motion
+ *  in between (real parallax: it streams past as you drive). */
+function wrapToward(v: number, center: number, bound: number): number {
+  let d = v - center;
+  const span = bound * 2;
+  if (d > bound) d -= span;
+  else if (d < -bound) d += span;
+  return center + d;
+}
+
 function softSprite(): THREE.Texture {
   const s = 64;
   const canvas = document.createElement('canvas');
@@ -162,9 +173,9 @@ class Layer {
         puff.scale.set(1 + Math.random() * 0.8, 0.6 + Math.random() * 0.3, 1 + Math.random() * 0.6);
         cloud.add(puff);
       }
-      cloud.position.set((Math.random() - 0.5) * 64, 12 + Math.random() * 7, -22 - Math.random() * 30);
+      cloud.position.set((Math.random() - 0.5) * 90, 12 + Math.random() * 7, (Math.random() - 0.5) * 90);
       cloud.scale.setScalar(1.3 + Math.random() * 1.3);
-      this.ambient.add(cloud);
+      this.group.add(cloud);
       this.clouds.push({ mesh: cloud, speed: 0.4 + Math.random() * 0.5 });
     }
   }
@@ -189,13 +200,13 @@ class Layer {
       right.add(rw);
       g.add(body, head, left, right);
       g.scale.setScalar(1.5);
-      this.ambient.add(g);
+      this.group.add(g);
       this.birds.push({
         group: g,
         left,
         right,
-        cx: (Math.random() - 0.5) * 12,
-        cz: -4 + (Math.random() - 0.5) * 12,
+        cx: (Math.random() - 0.5) * 44,
+        cz: (Math.random() - 0.5) * 44,
         radius: 9 + Math.random() * 8,
         height: 6.5 + Math.random() * 2.5,
         speed: (0.25 + Math.random() * 0.2) * (Math.random() < 0.5 ? 1 : -1),
@@ -241,7 +252,7 @@ class Layer {
     this.fadeMats.push({ mat, base: fireflies ? 1 : 0.6 });
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false;
-    this.ambient.add(points);
+    this.group.add(points);
     this.particles = { points, velocities, phases, base, twinkle: fireflies, bounds, rise: 8 };
   }
 
@@ -281,12 +292,16 @@ class Layer {
   }
 
   update(dt: number, t: number, unitX: number, unitZ: number) {
-    // Grass wraps to the nearest plaza image; ambient life follows the unit.
+    // Grass wraps to the nearest plaza image; only the star dome follows the unit.
     if (this.grass) this.grass.position.set(wrapNearest(unitX, 0), 0, wrapNearest(unitZ, 0));
     this.ambient.position.set(unitX, 0, unitZ);
     if (this.grassMat?.userData.shader) this.grassMat.userData.shader.uniforms.uTime.value = t;
 
+    // Birds circle a world-space centre that wraps to stay near the unit, so they
+    // stream past with real parallax rather than sticking to the screen.
     for (const b of this.birds) {
+      b.cx = wrapToward(b.cx, unitX, 26);
+      b.cz = wrapToward(b.cz, unitZ, 26);
       b.angle += b.speed * dt;
       const ca = Math.cos(b.angle);
       const sa = Math.sin(b.angle);
@@ -298,8 +313,8 @@ class Layer {
     }
 
     for (const c of this.clouds) {
-      c.mesh.position.x += c.speed * dt;
-      if (c.mesh.position.x > 45) c.mesh.position.x = -45;
+      c.mesh.position.x = wrapToward(c.mesh.position.x + c.speed * dt, unitX, 55);
+      c.mesh.position.z = wrapToward(c.mesh.position.z, unitZ, 55);
     }
 
     const p = this.particles;
@@ -309,14 +324,14 @@ class Layer {
       const col = p.points.geometry.getAttribute('color') as THREE.BufferAttribute;
       const carr = col.array as Float32Array;
       for (let i = 0; i < pos.count; i++) {
+        // drift by their own velocity only (world-anchored), then wrap toward the
+        // unit — so they parallax past as the car moves, never glued to the screen.
         arr[i * 3] += p.velocities[i * 3] * dt + Math.sin(t * 0.6 + p.phases[i]) * 0.01;
         arr[i * 3 + 1] += p.velocities[i * 3 + 1] * dt;
         arr[i * 3 + 2] += p.velocities[i * 3 + 2] * dt;
         if (arr[i * 3 + 1] > p.rise) arr[i * 3 + 1] = 0.4;
-        for (const ax of [0, 2]) {
-          if (arr[i * 3 + ax] > p.bounds) arr[i * 3 + ax] = -p.bounds;
-          else if (arr[i * 3 + ax] < -p.bounds) arr[i * 3 + ax] = p.bounds;
-        }
+        arr[i * 3] = wrapToward(arr[i * 3], unitX, p.bounds);
+        arr[i * 3 + 2] = wrapToward(arr[i * 3 + 2], unitZ, p.bounds);
         if (p.twinkle) {
           const k = 0.25 + 0.75 * Math.abs(Math.sin(t * 2.5 + p.phases[i]));
           carr[i * 3] = p.base.r * k;

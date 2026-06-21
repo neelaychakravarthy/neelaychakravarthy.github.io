@@ -1,4 +1,19 @@
 import * as THREE from 'three';
+import { wrapNearest } from './wrap';
+
+/**
+ * A circular no-go region (mountain base, water, etc.). Anchored to a structure
+ * origin (ax,az) that tiles with the world, plus a world-space offset (dx,dz) to
+ * the circle centre — so the barrier always wraps to the same image as the
+ * structure it belongs to (e.g. the ocean stays glued to its beach).
+ */
+export interface Collider {
+  ax: number;
+  az: number;
+  dx: number;
+  dz: number;
+  radius: number;
+}
 
 /**
  * Unit — the player-controllable thing, with car-like click-to-move steering.
@@ -23,6 +38,9 @@ export class Unit {
   private readonly stopThreshold = 0.3;
   private readonly wheelRadius = 0.34;
 
+  /** Circular obstacles the unit can't enter (drives around / stops at the edge). */
+  colliders: Collider[] = [];
+
   private target: THREE.Vector3 | null = null;
   private velocity = 0;
   private readonly wheels: THREE.Mesh[] = [];
@@ -45,6 +63,20 @@ export class Unit {
   setTarget(p: THREE.Vector3) {
     this.target = p.clone();
     this.target.y = 0;
+    // If the destination is inside an obstacle, pull it to that obstacle's edge
+    // so the car drives up to the shore/mountain and stops cleanly (no grinding).
+    for (const c of this.colliders) {
+      const cx = wrapNearest(this.target.x, c.ax) + c.dx;
+      const cz = wrapNearest(this.target.z, c.az) + c.dz;
+      const dx = this.target.x - cx;
+      const dz = this.target.z - cz;
+      const d = Math.hypot(dx, dz);
+      if (d < c.radius && d > 1e-4) {
+        const s = c.radius / d - 1;
+        this.target.x += dx * s;
+        this.target.z += dz * s;
+      }
+    }
   }
 
   /** Cancel movement (used while a morph drives the unit externally). */
@@ -86,6 +118,27 @@ export class Unit {
       this.position.addScaledVector(this.forward, this.velocity * dt);
       const spin = (this.velocity * dt) / this.wheelRadius;
       for (const w of this.wheels) w.rotation.x += spin;
+    }
+    if (this.colliders.length) this.resolveCollisions();
+  }
+
+  /** Push the unit out of any obstacle it has entered (slides along the edge,
+   *  so you drive around the mountain / along the shore). Toroidally wrapped. */
+  private resolveCollisions() {
+    for (const c of this.colliders) {
+      const cx = wrapNearest(this.position.x, c.ax) + c.dx;
+      const cz = wrapNearest(this.position.z, c.az) + c.dz;
+      const dx = this.position.x - cx;
+      const dz = this.position.z - cz;
+      const d = Math.hypot(dx, dz);
+      if (d >= c.radius) continue;
+      if (d > 1e-4) {
+        const push = c.radius / d - 1;
+        this.position.x += dx * push;
+        this.position.z += dz * push;
+      } else {
+        this.position.x += c.radius; // dead-centre: shove out along +x
+      }
     }
   }
 

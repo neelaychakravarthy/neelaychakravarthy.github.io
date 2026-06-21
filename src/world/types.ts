@@ -31,6 +31,9 @@ export interface StructureConfig {
   /** Distant scenery: follows the camera at this offset (never reached) instead
    *  of tiling with the looping world. For mountains, coastlines, skyline, etc. */
   backdrop?: boolean;
+  /** Circular no-go region (local offset from the structure + radius) the unit
+   *  can't enter — e.g. a mountain base or open water. Drives around it. */
+  collider?: { dx?: number; dz?: number; radius: number };
 }
 
 export type ContentKind = 'title' | 'subtitle' | 'fact' | 'link' | 'panel' | 'screen' | 'board';
