@@ -84,14 +84,14 @@ function panelMat(color: THREE.ColorRepresentation, opacity: number) {
  */
 function makeBoard(c: ContentConfig): THREE.Object3D {
   const g = new THREE.Group();
-  g.position.set(...c.position); // position.y is the BOTTOM edge (hovers above ground)
+  // position.y is the panel's BOTTOM edge and stays FIXED after creation, so the
+  // morph (which captures this group's Y at build time) raises/sinks it correctly.
+  g.position.set(...c.position);
   if (c.rotationY) g.rotation.y = c.rotationY;
-  const anchorBottom = c.position[1];
 
   const W = c.width ?? 7.4;
   const padX = 0.55;
-  const padTop = 0.5;
-  const padBottom = 0.5;
+  const padV = 0.5;
   const innerW = W - padX * 2;
   const accent = c.accent ?? '#9fb4ff';
   const lines = c.lines ?? [];
@@ -101,58 +101,54 @@ function makeBoard(c: ContentConfig): THREE.Object3D {
   const badgeSize = 0.24;
   const lineSize = 0.24;
 
-  // accent bar near the top edge
-  const bar = new THREE.Mesh(roundedRect(W - 0.6, 0.09, 0.04), panelMat(accent, 0.9));
-  bar.position.set(0, -0.26, 0.01);
-  g.add(bar);
+  interface BoardItem {
+    text: string;
+    size: number;
+    color: THREE.ColorRepresentation;
+    bold?: boolean;
+    gapAbove: number;
+    lineHeight?: number;
+  }
+  // display order, top -> bottom
+  const items: BoardItem[] = [{ text: c.heading ?? '', size: headingSize, color: '#ffffff', bold: true, gapAbove: 0 }];
+  if (c.subheading) items.push({ text: c.subheading, size: subSize, color: '#d7e2f0', gapAbove: 0.12 });
+  if (c.badge) items.push({ text: c.badge, size: badgeSize, color: accent, gapAbove: 0.12 });
+  if (lines.length) items.push({ text: lines.join('\n'), size: lineSize, color: '#ccd7e6', gapAbove: 0.22, lineHeight: 1.55 });
 
-  // The backing is sized to the *measured* content (robust to any wrapping).
-  const buildBacking = (bottomY: number) => {
-    const H = -bottomY + padBottom;
-    const cy = -H / 2;
+  const finalize = (topY: number) => {
+    const H = topY + padV;
+    const cy = H / 2;
     const backing = new THREE.Mesh(roundedRect(W, H, 0.42), panelMat('#0b1320', 0.6));
     backing.position.set(0, cy, -0.05);
     backing.renderOrder = -2;
     const border = new THREE.Mesh(roundedRect(W + 0.14, H + 0.14, 0.48), panelMat(accent, 0.3));
     border.position.set(0, cy, -0.07);
     border.renderOrder = -3;
-    g.add(backing, border);
-    // Position the whole board so its bottom edge sits at the anchor (above ground).
-    g.position.y = anchorBottom + H;
+    const bar = new THREE.Mesh(roundedRect(W - 0.6, 0.09, 0.04), panelMat(accent, 0.9));
+    bar.position.set(0, H - 0.24, 0.01);
+    g.add(backing, border, bar);
   };
 
-  // Lay elements out top-down, placing each below the *measured* height of the
-  // previous one — so wrapped headings/subheadings never overlap.
-  interface BoardItem {
-    text: string;
-    size: number;
-    color: THREE.ColorRepresentation;
-    bold?: boolean;
-    gap: number;
-    lineHeight?: number;
-  }
-  const items: BoardItem[] = [{ text: c.heading ?? '', size: headingSize, color: '#ffffff', bold: true, gap: 0.1 }];
-  if (c.subheading) items.push({ text: c.subheading, size: subSize, color: '#d7e2f0', gap: 0.1 });
-  if (c.badge) items.push({ text: c.badge, size: badgeSize, color: accent, gap: 0.1 });
-  if (lines.length) items.push({ text: lines.join('\n'), size: lineSize, color: '#ccd7e6', gap: 0.2, lineHeight: 1.55 });
-
-  let y = -padTop;
+  // Lay out bottom-up (body at the bottom, heading at the top), measuring each
+  // line so wrapped text never overlaps — the bottom edge stays at the origin.
+  const order = items.slice().reverse();
+  let y = padV; // local bottom of the next element
   const layoutNext = (i: number) => {
-    if (i >= items.length) {
-      buildBacking(y);
+    if (i >= order.length) {
+      finalize(y);
       return;
     }
-    const it = items[i];
-    y -= it.gap;
+    const it = order[i];
     const t = makeTroika(it.text, it.size, it.color, it.bold);
-    t.anchorY = 'top';
+    t.anchorY = 'bottom';
     t.maxWidth = innerW;
     if (it.lineHeight) t.lineHeight = it.lineHeight;
     t.position.set(0, y, 0.02);
     g.add(t);
     t.sync(() => {
       const bb = (t as unknown as { textRenderInfo?: { blockBounds: number[] } }).textRenderInfo?.blockBounds;
-      y -= bb ? bb[3] - bb[1] : it.size * 1.34;
+      const h = bb ? bb[3] - bb[1] : it.size * 1.34;
+      y += h + it.gapAbove;
       layoutNext(i + 1);
     });
   };
