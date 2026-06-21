@@ -25,8 +25,8 @@ function dustSprite(): THREE.Texture {
 }
 
 export class TireFX {
-  private readonly MAX = 100;
-  private readonly LIFE = 0.75;
+  private readonly MAX = 260;
+  private readonly LIFE = 1.5;
   private readonly pos: Float32Array;
   private readonly life: Float32Array; // remaining life 0..1 (also the aLife attribute)
   private readonly vel: Float32Array;
@@ -59,8 +59,8 @@ export class TireFX {
       depthWrite: false,
       uniforms: {
         uTex: { value: dustSprite() },
-        uColor: { value: new THREE.Color('#cab590') },
-        uSize: { value: 95 },
+        uColor: { value: new THREE.Color('#e3d6bb') },
+        uSize: { value: 820 },
       },
       vertexShader: /* glsl */ `
         attribute float aLife;
@@ -69,7 +69,8 @@ export class TireFX {
         void main() {
           vLife = aLife;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          float grow = 0.45 + (1.0 - aLife) * 1.6;
+          // puffs start small and billow out big as they age (aLife 1 -> 0)
+          float grow = 0.4 + (1.0 - aLife) * 2.3;
           gl_PointSize = uSize * grow / max(-mv.z, 1.0);
           gl_Position = projectionMatrix * mv;
         }`,
@@ -79,7 +80,9 @@ export class TireFX {
         varying float vLife;
         void main() {
           if (vLife <= 0.01) discard;
-          float a = texture2D(uTex, gl_PointCoord).a * vLife * 0.6;
+          // fade in quickly, then out — soft, billowy alpha
+          float fade = smoothstep(0.0, 0.25, vLife) * vLife;
+          float a = texture2D(uTex, gl_PointCoord).a * fade * 0.75;
           gl_FragColor = vec4(uColor, a);
         }`,
     });
@@ -92,8 +95,8 @@ export class TireFX {
 
   update(dt: number, unit: Unit) {
     const speed = unit.currentSpeed;
-    if (speed > 1.5) {
-      this.accum += dt * (5 + speed * 0.9);
+    if (speed > 1.2) {
+      this.accum += dt * (18 + speed * 1.7);
       while (this.accum >= 1) {
         this.accum -= 1;
         this.emit(unit);
@@ -105,9 +108,9 @@ export class TireFX {
       this.pos[i * 3] += this.vel[i * 3] * dt;
       this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
       this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
-      this.vel[i * 3] *= 0.9;
-      this.vel[i * 3 + 1] -= 1.4 * dt; // settle back down
-      this.vel[i * 3 + 2] *= 0.9;
+      this.vel[i * 3] *= 0.93;
+      this.vel[i * 3 + 1] = this.vel[i * 3 + 1] * 0.96 - 0.3 * dt; // billow up, then drift down slowly
+      this.vel[i * 3 + 2] *= 0.93;
     }
     this.posAttr.needsUpdate = true;
     this.lifeAttr.needsUpdate = true;
@@ -121,13 +124,13 @@ export class TireFX {
     const wx = unit.position.x + (ox * c + oz * s);
     const wz = unit.position.z + (-ox * s + oz * c);
     const i = this.findSlot();
-    this.pos[i * 3] = wx + (Math.random() - 0.5) * 0.25;
-    this.pos[i * 3 + 1] = 0.22;
-    this.pos[i * 3 + 2] = wz + (Math.random() - 0.5) * 0.25;
-    // kick up and backward (opposite the unit's forward = (sin, cos))
-    this.vel[i * 3] = -s * 0.5 + (Math.random() - 0.5) * 0.9;
-    this.vel[i * 3 + 1] = 0.8 + Math.random() * 0.7;
-    this.vel[i * 3 + 2] = -c * 0.5 + (Math.random() - 0.5) * 0.9;
+    this.pos[i * 3] = wx + (Math.random() - 0.5) * 0.4;
+    this.pos[i * 3 + 1] = 0.3;
+    this.pos[i * 3 + 2] = wz + (Math.random() - 0.5) * 0.4;
+    // billow up and spread out, drifting backward (opposite the unit's forward = (sin, cos))
+    this.vel[i * 3] = -s * 0.7 + (Math.random() - 0.5) * 1.8;
+    this.vel[i * 3 + 1] = 1.3 + Math.random() * 1.2;
+    this.vel[i * 3 + 2] = -c * 0.7 + (Math.random() - 0.5) * 1.8;
     this.life[i] = 1;
     this.cursor++;
   }
