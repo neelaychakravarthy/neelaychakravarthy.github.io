@@ -16,6 +16,7 @@ import { TransitionController } from './engine/TransitionController';
 import { InteractionManager } from './engine/InteractionManager';
 import { loadWorld } from './engine/WorldLoader';
 import { AudioManager } from './engine/AudioManager';
+import { WORLD_PERIOD, setWorldPeriod, wrapDelta } from './engine/wrap';
 import type { SpawnConfig } from './world/types';
 
 function hideLoader() {
@@ -132,6 +133,7 @@ async function boot() {
   if (!app) throw new Error('#app container missing');
 
   const world = await loadWorld();
+  if (world.period) setWorldPeriod(world.period);
 
   const engine = new Engine(app);
   const env = new EnvironmentController(engine.scene);
@@ -201,6 +203,15 @@ async function boot() {
     locked = true;
     unit.stop();
     focus.reset();
+    // Recentre the unit + camera into the home tile (seamlessly, since the world
+    // is periodic) so the morph always plays out near the authored origin.
+    const ox = wrapDelta(unit.position.x, 0) - unit.position.x;
+    const oz = wrapDelta(unit.position.z, 0) - unit.position.z;
+    if (ox !== 0 || oz !== 0) {
+      unit.object.position.x += ox;
+      unit.object.position.z += oz;
+      rig.shift(ox, oz);
+    }
     audio.morph();
     const from = biomes.current;
     const to = biomes.build(target, true);
@@ -252,6 +263,10 @@ async function boot() {
     fc.add(focus, 'elevationDeg', 0, 42, 1);
     fc.add(focus, 'focusFov', 20, 50, 1);
     fc.add(focus, 'margin', 1, 1.8, 0.05);
+    const wf = gui.addFolder('World (loop)');
+    wf.add({ period: WORLD_PERIOD }, 'period', 80, 320, 5).onChange((v: number) => setWorldPeriod(v));
+    wf.add(env.fog, 'near', 10, 200, 1);
+    wf.add(env.fog, 'far', 30, 320, 1);
     gui.close();
   }
 
@@ -285,13 +300,17 @@ async function boot() {
       unit.update(dt);
       interaction.update(unit.position, triggerMorph);
     }
+    // Seamless toroidal world: draw content at its nearest image to the unit and
+    // recentre the ground/sky/sun on the unit, so every direction loops back.
+    biomes.wrap(unit.position);
+    env.follow(unit.position.x, unit.position.z);
     click.update(dt, unit.hasTarget && !locked);
     // Engage focus only when parked near content; the moment the unit is driving
     // (hasTarget), release so the player sees the world and can steer freely.
     const focusOverride = focus.update(dt, unit.position, !locked && !unit.hasTarget);
     rig.update(dt, unit.position, focusOverride);
     fx.update(dt);
-    atmosphere.update(dt);
+    atmosphere.update(dt, unit.position.x, unit.position.z);
     biomes.update(dt, engine.camera, unit.position);
 
     if (firstFrame) {

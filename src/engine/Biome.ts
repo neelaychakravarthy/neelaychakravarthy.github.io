@@ -4,13 +4,18 @@ import type { BiomeConfig, WorldConfig } from '../world/types';
 import type { AssetRegistry } from './AssetRegistry';
 import { EnvironmentController } from './EnvironmentController';
 import { makeContent, makePad } from './interactables';
+import { wrapNearest } from './wrap';
 
 /** How far (world units) structures drop below ground when sunk during a morph. */
 export const MORPH_SINK = 10;
 
 export interface MorphItem {
   obj: THREE.Object3D;
+  baseX: number;
   baseY: number;
+  baseZ: number;
+  /** Distant scenery that follows the camera instead of tiling with the world. */
+  backdrop: boolean;
 }
 
 export interface PadInstance {
@@ -51,7 +56,13 @@ function buildBiome(
 
   const addItem = (obj: THREE.Object3D) => {
     group.add(obj);
-    morphItems.push({ obj, baseY: obj.position.y });
+    morphItems.push({
+      obj,
+      baseX: obj.position.x,
+      baseY: obj.position.y,
+      baseZ: obj.position.z,
+      backdrop: !!obj.userData.backdrop,
+    });
   };
 
   (config.structures ?? []).forEach((s, i) => {
@@ -59,6 +70,7 @@ function buildBiome(
     obj.position.set(...s.position);
     if (s.rotationY) obj.rotation.y = s.rotationY;
     if (s.scale) obj.scale.setScalar(s.scale);
+    if (s.backdrop) obj.userData.backdrop = true;
     addItem(obj);
   });
 
@@ -186,6 +198,28 @@ export class BiomeManager {
         disposeMaterial(o.material);
       }
     });
+  }
+
+  /**
+   * Toroidal wrap: draw every item at the periodic image nearest the unit, so
+   * the world repeats seamlessly. Only X/Z are wrapped; Y stays owned by the
+   * morph (sink/rise). Runs before interaction/focus so they see fresh positions.
+   */
+  wrap(unitPos: THREE.Vector3) {
+    const b = this.current;
+    if (!b) return;
+    for (const it of b.morphItems) {
+      if (it.backdrop) {
+        // distant scenery: hold a constant offset from the unit (always far)
+        it.obj.position.x = unitPos.x + it.baseX;
+        it.obj.position.z = unitPos.z + it.baseZ;
+      } else {
+        it.obj.position.x = wrapNearest(unitPos.x, it.baseX);
+        it.obj.position.z = wrapNearest(unitPos.z, it.baseZ);
+      }
+    }
+    // PadInstance.position stays the authored base; proximity uses toroidal
+    // distance to it, so a pad fires from whichever image you drive onto.
   }
 
   update(dt: number, camera: THREE.Camera, unitPos: THREE.Vector3) {

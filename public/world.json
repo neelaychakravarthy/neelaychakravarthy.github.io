@@ -1,6 +1,7 @@
 {
   "version": 1,
   "unit": { "speed": 10, "turnRate": 5.5 },
+  "period": 110,
   "startBiome": "hub",
   "biomes": [
     {
@@ -34,8 +35,8 @@
         { "modelId": "planter", "position": [-9, 0, -10.5] },
         { "modelId": "planter", "position": [-2.5, 0, -9] },
         { "modelId": "swimming-pool", "position": [25, 0, 7], "rotationY": -0.5 },
-        { "modelId": "beach", "position": [42, 0, -2] },
-        { "modelId": "ski-mountain", "position": [-22, 0, -56] }
+        { "modelId": "beach", "position": [42, 0, -2], "backdrop": true },
+        { "modelId": "ski-mountain", "position": [-22, 0, -56], "backdrop": true }
       ],
       "content": [
         {

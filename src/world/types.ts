@@ -28,6 +28,9 @@ export interface StructureConfig {
   position: Vec3;
   rotationY?: number;
   scale?: number;
+  /** Distant scenery: follows the camera at this offset (never reached) instead
+   *  of tiling with the looping world. For mountains, coastlines, skyline, etc. */
+  backdrop?: boolean;
 }
 
 export type ContentKind = 'title' | 'subtitle' | 'fact' | 'link' | 'panel' | 'screen' | 'board';
@@ -117,6 +120,8 @@ export interface BiomeConfig {
 export interface WorldConfig {
   version: number;
   unit?: { speed?: number; turnRate?: number };
+  /** Toroidal loop length in world units (drive this far to wrap back). */
+  period?: number;
   startBiome: string;
   biomes: BiomeConfig[];
 }

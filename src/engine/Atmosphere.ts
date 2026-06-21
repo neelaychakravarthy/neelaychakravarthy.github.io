@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
 import type { AtmosphereConfig } from '../world/types';
+import { wrapNearest } from './wrap';
 
 /**
  * Atmosphere — procedural ambient life, configured per biome and crossfaded on
@@ -60,6 +61,9 @@ interface Particles {
 /** One biome's worth of atmosphere; faded via a single 0..1 intensity. */
 class Layer {
   readonly group = new THREE.Group();
+  /** Ambient life (birds/particles/clouds/stars) that follows the unit so it's
+   *  everywhere; grass stays in `group` and wraps to the nearest plaza image. */
+  private readonly ambient = new THREE.Group();
   intensity = 0;
   private grass?: THREE.InstancedMesh;
   private grassMat?: THREE.MeshStandardMaterial;
@@ -72,6 +76,7 @@ class Layer {
 
   constructor(scene: THREE.Scene, cfg: AtmosphereConfig | undefined, sharedTex: THREE.Texture) {
     this.sharedTex = sharedTex;
+    this.group.add(this.ambient);
     scene.add(this.group);
     const c = cfg ?? {};
     if (c.grass) this.buildGrass(c.grass, c.grassColor ?? '#6fae5a', c.grassClear ?? []);
@@ -159,7 +164,7 @@ class Layer {
       }
       cloud.position.set((Math.random() - 0.5) * 64, 12 + Math.random() * 7, -22 - Math.random() * 30);
       cloud.scale.setScalar(1.3 + Math.random() * 1.3);
-      this.group.add(cloud);
+      this.ambient.add(cloud);
       this.clouds.push({ mesh: cloud, speed: 0.4 + Math.random() * 0.5 });
     }
   }
@@ -184,7 +189,7 @@ class Layer {
       right.add(rw);
       g.add(body, head, left, right);
       g.scale.setScalar(1.5);
-      this.group.add(g);
+      this.ambient.add(g);
       this.birds.push({
         group: g,
         left,
@@ -236,7 +241,7 @@ class Layer {
     this.fadeMats.push({ mat, base: fireflies ? 1 : 0.6 });
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false;
-    this.group.add(points);
+    this.ambient.add(points);
     this.particles = { points, velocities, phases, base, twinkle: fireflies, bounds, rise: 8 };
   }
 
@@ -265,7 +270,7 @@ class Layer {
     this.fadeMats.push({ mat, base: 1 });
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false;
-    this.group.add(points);
+    this.ambient.add(points);
     this.stars = { points, phases, base };
   }
 
@@ -275,7 +280,10 @@ class Layer {
     for (const f of this.fadeMats) f.mat.opacity = this.intensity * f.base;
   }
 
-  update(dt: number, t: number) {
+  update(dt: number, t: number, unitX: number, unitZ: number) {
+    // Grass wraps to the nearest plaza image; ambient life follows the unit.
+    if (this.grass) this.grass.position.set(wrapNearest(unitX, 0), 0, wrapNearest(unitZ, 0));
+    this.ambient.position.set(unitX, 0, unitZ);
     if (this.grassMat?.userData.shader) this.grassMat.userData.shader.uniforms.uTime.value = t;
 
     for (const b of this.birds) {
@@ -363,8 +371,8 @@ export class Atmosphere {
     gsap.to(next, { intensity: 1, duration: 1.6, ease: 'power1.out', onUpdate: () => next.apply() });
   }
 
-  update(dt: number) {
+  update(dt: number, unitX: number, unitZ: number) {
     this.elapsed += dt;
-    this.layer?.update(dt, this.elapsed);
+    this.layer?.update(dt, this.elapsed, unitX, unitZ);
   }
 }

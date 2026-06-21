@@ -25,12 +25,17 @@ export interface EnvState {
 
 export class EnvironmentController {
   readonly ground: THREE.Mesh;
+  /** Public so the dev panel can tune view distance (for hiding the wrap seam). */
+  readonly fog: THREE.Fog;
 
   private readonly skyMat: THREE.ShaderMaterial;
-  private readonly fog: THREE.Fog;
+  private readonly sky: THREE.Mesh;
   private readonly hemi: THREE.HemisphereLight;
   private readonly sun: THREE.DirectionalLight;
   private readonly groundMat: THREE.MeshStandardMaterial;
+  /** Sun position as an offset from the followed centre (keeps a constant sun angle). */
+  private readonly sunOffset = new THREE.Vector3();
+  private readonly center = new THREE.Vector3();
 
   constructor(scene: THREE.Scene) {
     // sky dome
@@ -58,9 +63,9 @@ export class EnvironmentController {
           gl_FragColor = vec4(mix(uBottom, uTop, t), 1.0);
         }`,
     });
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), this.skyMat);
-    sky.name = 'sky';
-    scene.add(sky);
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), this.skyMat);
+    this.sky.name = 'sky';
+    scene.add(this.sky);
 
     // fog
     this.fog = new THREE.Fog(new THREE.Color('#dcebfa'), 50, 150);
@@ -72,6 +77,7 @@ export class EnvironmentController {
 
     this.sun = new THREE.DirectionalLight(new THREE.Color('#fff6e8'), 2.6);
     this.sun.position.set(24, 34, 18);
+    this.sunOffset.copy(this.sun.position);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.camera.near = 1;
@@ -85,12 +91,31 @@ export class EnvironmentController {
     this.sun.shadow.normalBias = 0.02;
     scene.add(this.sun, this.sun.target);
 
-    // ground (shared raycast target)
+    // ground (shared raycast target) — large + recentred on the unit each frame
+    // so it reads as infinite in every direction.
     this.groundMat = new THREE.MeshStandardMaterial({ color: '#e7edf4', roughness: 0.96, metalness: 0 });
-    this.ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), this.groundMat);
+    this.ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), this.groundMat);
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.receiveShadow = true;
     scene.add(this.ground);
+  }
+
+  /** Recentre the ground, sky dome, and sun/shadow on the unit (for the
+   *  infinite-feeling, seamlessly-wrapping world). Uniform, so it's invisible. */
+  follow(x: number, z: number) {
+    this.center.set(x, 0, z);
+    this.ground.position.set(x, 0, z);
+    this.sky.position.set(x, 0, z);
+    this.applySun();
+  }
+
+  private applySun() {
+    this.sun.target.position.copy(this.center);
+    this.sun.position.set(
+      this.center.x + this.sunOffset.x,
+      this.sunOffset.y,
+      this.center.z + this.sunOffset.z,
+    );
   }
 
   /** Parse a manifest environment into interpolatable state. */
@@ -131,7 +156,8 @@ export class EnvironmentController {
 
     this.sun.color.lerpColors(a.sunColor, b.sunColor, t);
     this.sun.intensity = THREE.MathUtils.lerp(a.sunIntensity, b.sunIntensity, t);
-    this.sun.position.lerpVectors(a.sunPos, b.sunPos, t);
+    this.sunOffset.lerpVectors(a.sunPos, b.sunPos, t);
+    this.applySun();
 
     this.groundMat.color.lerpColors(a.groundColor, b.groundColor, t);
   }

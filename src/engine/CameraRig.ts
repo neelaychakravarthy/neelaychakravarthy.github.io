@@ -122,6 +122,15 @@ export class CameraRig {
     }
   }
 
+  /** Shift the camera + look-target by a world offset with no visible motion
+   *  (used when the unit is recentred to the home tile before a morph). */
+  shift(dx: number, dz: number) {
+    this.camera.position.x += dx;
+    this.camera.position.z += dz;
+    this.target.x += dx;
+    this.target.z += dz;
+  }
+
   dispose() {
     this.dom.removeEventListener('wheel', this.onWheel);
     this.dom.removeEventListener('pointerdown', this.onPointerDown);

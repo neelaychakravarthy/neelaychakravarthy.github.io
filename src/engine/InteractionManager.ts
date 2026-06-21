@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { PadInstance } from './Biome';
+import { wrapDistXZ } from './wrap';
 
 /**
  * InteractionManager — fires a pad's morph when the unit drives onto it.
@@ -17,9 +18,8 @@ export class InteractionManager {
   }
 
   private inside(p: PadInstance, pos: THREE.Vector3): boolean {
-    const dx = pos.x - p.position.x;
-    const dz = pos.z - p.position.z;
-    return dx * dx + dz * dz < p.radius * p.radius;
+    // toroidal: a pad fires from whichever periodic image you drive onto
+    return wrapDistXZ(pos.x, pos.z, p.position.x, p.position.z) < p.radius;
   }
 
   update(unitPos: THREE.Vector3, onTrigger: (target: string) => void) {
