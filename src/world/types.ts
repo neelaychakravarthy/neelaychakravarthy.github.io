@@ -3,7 +3,8 @@
  *
  * The engine is a fixed interpreter of this shape. Adding a project = adding a
  * biome entry (+ a pad in the hub) to public/world.json, not engine code.
- * See portfolio-research/SPEC.md §2.
+ * See docs/MANIFEST.md for the field-by-field reference and docs/ARCHITECTURE.md
+ * for how the engine interprets this.
  */
 
 export type Vec3 = [number, number, number];

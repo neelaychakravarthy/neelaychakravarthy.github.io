@@ -60,11 +60,21 @@ src/
     AudioManager.ts    # procedural ambient pads + SFX (Web Audio)
     interactables.ts   # 3D text boards, link chips, panels, video, pads
     WorldLoader.ts     # loads + validates world.json
-  main.ts              # wiring
-portfolio-research/    # RESEARCH.md + SPEC.md (design source of truth)
+  main.ts              # wiring + the per-frame update loop
+docs/                  # developer docs — START HERE to extend the engine
 ```
+
+(The engine list above is abridged — see [`docs/ENGINE.md`](docs/ENGINE.md) for all
+23 modules.)
+
+## Docs
+
+Extending or iterating on the engine? Read [`docs/`](docs/), starting with
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The one invariant: `src/engine/` is
+a fixed interpreter of `public/world.json` — **adding a project is a manifest edit,
+not an engine change.** See [`docs/COOKBOOK.md`](docs/COOKBOOK.md) for recipes.
 
 ## Tech
 
 Three.js · TypeScript · Vite · GSAP · troika-three-text · postprocessing.
-Desktop-first; phones get a lightweight courtesy page.
+Works on desktop and mobile (touch controls + an automatic quality tier).
