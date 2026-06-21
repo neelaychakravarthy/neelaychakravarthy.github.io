@@ -22,7 +22,7 @@ const SCALES = {
 } as const;
 
 /** Distinct melodic character per biome (rhythm + shape), so they don't blur together. */
-type MelodyStyle = 'wander' | 'motif' | 'arp' | 'pairs' | 'run' | 'pulse';
+type MelodyStyle = 'wander' | 'motif' | 'arp' | 'pairs' | 'run' | 'pulse' | 'forge';
 
 interface Preset {
   scale: readonly number[];
@@ -59,6 +59,8 @@ export const MUSIC_PRESETS: Record<string, Preset> = {
   'minimal-penta': { scale: SCALES.pentaMajor, progression: [0, 3, 2, 0], bpm: 72, beatsPerChord: 8, padWave: 'sine', leadWave: 'sine', bassWave: 'sine', brightness: 1250, melodyStyle: 'pulse', melodyDensity: 0.7, leadOctave: 1, reverbMix: 0.6 },
   // classroom — gentle call-and-response pairs
   'bell-pairs': { scale: SCALES.major, progression: [0, 5, 3, 4], bpm: 78, beatsPerChord: 8, padWave: 'triangle', leadWave: 'sine', bassWave: 'sine', brightness: 1350, melodyStyle: 'pairs', melodyDensity: 0.8, leadOctave: 1, reverbMix: 0.52 },
+  // chakra — a sturdy mixolydian "forge" groove: warm, industrious, building (the flat-7 sets it well apart from goti's major)
+  'forge-mixo': { scale: SCALES.mixolydian, progression: [0, 6, 3, 0], bpm: 88, beatsPerChord: 8, padWave: 'triangle', leadWave: 'triangle', bassWave: 'sine', brightness: 1150, melodyStyle: 'forge', melodyDensity: 0.85, leadOctave: 1, reverbMix: 0.5 },
 };
 
 /** A short synthesized reverb impulse (decaying noise) — cinematic space. */
@@ -223,6 +225,20 @@ export class MusicEngine {
         const cyc = [0, 2, 0, 4];
         if (localStep % 2 === 0 && Math.random() < p.melodyDensity) {
           lead(root + cyc[(localStep / 2) % cyc.length], 0.85);
+        }
+        break;
+      }
+      case 'forge': {
+        // a smith's rhythm: a firm low strike on the beat, answered by a bright
+        // chord-tone "ring" an octave up — sturdy and purposeful, like shaping metal
+        if (bar === 0) {
+          if (Math.random() < p.melodyDensity) lead(root, 0.9); // strike (root)
+          if (Math.random() < p.melodyDensity) lead(root + 4 + 7, 1.2, time + spb * 1.5); // ring (fifth, octave up)
+        } else if (bar === 4) {
+          if (Math.random() < p.melodyDensity) lead(root + 2, 0.9); // strike (third)
+          if (Math.random() < p.melodyDensity * 0.9) lead(root + 7, 1.2, time + spb * 1.5); // ring (octave)
+        } else if (bar === 2 || bar === 6) {
+          if (Math.random() < p.melodyDensity * 0.45) lead(root + 4, 0.5); // light off-beat tap (fifth)
         }
         break;
       }

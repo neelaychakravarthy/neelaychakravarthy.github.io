@@ -122,6 +122,42 @@ function palm(): THREE.Group {
 const WARM_CANOPIES = ['#e8674a', '#f0a93f', '#d9534f', '#e0863a'];
 const AGENT_COLORS = ['#4f86c6', '#5bb8a6', '#8a6fd1', '#d98a4f', '#5aa9e6', '#c2607f', '#5cc08a', '#b59a3f'];
 
+// ---- chakra (foundry / workshop) palette ----
+const CHAKRA_ORANGE = '#d9691f';
+const CHAKRA_BRAND = '#b85000';
+const CHAKRA_EMBER = '#ff7a1f';
+const METAL_DK = '#2b2622';
+const METAL_MD = '#4a4138';
+
+/**
+ * A low-poly cog wheel built in the local XY plane (its face points +Z), so a
+ * group with userData.spinSpeed + spinAxis 'z' turns it like a wheel. Used for
+ * the Chakra gear monument, the engine housings, and scattered cogs.
+ */
+function makeGear(radius: number, teeth: number, thickness: number, body: THREE.Material, tooth: THREE.Material): THREE.Group {
+  const g = new THREE.Group();
+  const disc = mesh(new THREE.CylinderGeometry(radius, radius, thickness, Math.max(16, teeth)), body);
+  disc.rotation.x = Math.PI / 2; // lay the circular face toward +Z
+  g.add(disc);
+  const tw = ((radius * 2 * Math.PI) / teeth) * 0.55; // tangential tooth width
+  for (let i = 0; i < teeth; i++) {
+    const a = (i / teeth) * Math.PI * 2;
+    const t = mesh(new THREE.BoxGeometry(tw, radius * 0.3, thickness), tooth);
+    t.position.set(Math.cos(a) * (radius + radius * 0.06), Math.sin(a) * (radius + radius * 0.06), 0);
+    t.rotation.z = a - Math.PI / 2; // align the tooth's length radially outward
+    g.add(t);
+  }
+  const hub = mesh(new THREE.CylinderGeometry(radius * 0.3, radius * 0.3, thickness * 1.3, 14), tooth);
+  hub.rotation.x = Math.PI / 2;
+  g.add(hub);
+  for (let i = 0; i < 5; i++) {
+    const spoke = mesh(new THREE.BoxGeometry(radius * 0.13, radius * 1.25, thickness * 0.7), body);
+    spoke.rotation.z = (i / 5) * Math.PI * 2;
+    g.add(spoke);
+  }
+  return g;
+}
+
 export class AssetRegistry {
   private factories: Record<string, Factory> = {
     // ---------- hub ----------
@@ -681,6 +717,214 @@ export class AssetRegistry {
         chairs.push(c);
       }
       g.userData.skiLift = { ftBottom, ftTop, bkBottom, bkTop, chairs, speed: 0.05 };
+      return g;
+    },
+
+    // ---------- chakra (multi-tenant BoM / inventory foundry) ----------
+    // Signature landmark: a big orange cog (the brand mark) on a pedestal, turning
+    // slowly, with a glowing twin-ring "spiral" core. Looms behind the info board.
+    'chakra-gear': () => {
+      const g = new THREE.Group();
+      const base = mesh(new THREE.CylinderGeometry(1.7, 2.2, 1.0, 8), std(METAL_DK, { metalness: 0.3, roughness: 0.7 }));
+      base.position.y = 0.5;
+      base.receiveShadow = true;
+      const neck = mesh(new THREE.CylinderGeometry(0.55, 0.8, 2.8, 8), std(METAL_MD, { metalness: 0.4, roughness: 0.6 }));
+      neck.position.y = 2.3;
+      g.add(base, neck);
+      const gear = makeGear(3.0, 16, 0.6, std(CHAKRA_BRAND, { metalness: 0.45, roughness: 0.5 }), std(CHAKRA_ORANGE, { emissive: CHAKRA_ORANGE, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.45 }));
+      gear.position.y = 6.0; // raised so the cog crowns the info board rather than hiding behind it
+      gear.userData.spinSpeed = 0.32;
+      gear.userData.spinAxis = 'z';
+      g.add(gear);
+      // glowing twin-ring swirl at the hub (the chakra spiral)
+      const ring1 = mesh(new THREE.TorusGeometry(0.82, 0.17, 10, 24), std(CHAKRA_EMBER, { emissive: CHAKRA_EMBER, emissiveIntensity: 0.9, roughness: 0.3 }), false);
+      ring1.position.set(0, 6.0, 0.34);
+      ring1.userData.spinSpeed = -0.55;
+      ring1.userData.spinAxis = 'z';
+      const ring2 = mesh(new THREE.TorusGeometry(0.44, 0.13, 10, 20), std('#ffd27a', { emissive: '#ffb24a', emissiveIntensity: 1.0, roughness: 0.3 }), false);
+      ring2.position.set(0, 6.0, 0.37);
+      ring2.userData.spinSpeed = 0.85;
+      ring2.userData.spinAxis = 'z';
+      g.add(ring1, ring2);
+      return g;
+    },
+    // a single scattered cog (sized via manifest `scale`); odd/even instances
+    // counter-rotate so neighbours read as meshing.
+    gear: (seed) => {
+      const cols = [CHAKRA_ORANGE, CHAKRA_BRAND, '#c2691f', '#5a4a3a'];
+      const g = makeGear(1.0, 12, 0.4, std(cols[seed % cols.length], { metalness: 0.45, roughness: 0.5 }), std('#3a332b', { metalness: 0.5, roughness: 0.45 }));
+      g.userData.spinSpeed = (seed % 2 === 0 ? 1 : -1) * 0.7;
+      g.userData.spinAxis = 'z';
+      return g;
+    },
+    // the "engine": a dark housing with three meshing cogs turning on its face —
+    // a stand-in for Chakra's transactional inventory/consumption engine.
+    machine: () => {
+      const g = new THREE.Group();
+      const frame = mesh(new THREE.BoxGeometry(5.6, 4.6, 0.4), std('#1f1b17', { roughness: 0.8 }));
+      frame.position.set(0, 2.6, -0.55);
+      const panel = mesh(new THREE.BoxGeometry(5.2, 4.2, 0.5), std(METAL_DK, { metalness: 0.3, roughness: 0.7 }));
+      panel.position.set(0, 2.6, -0.4);
+      g.add(frame, panel);
+      const specs = [
+        { x: -1.35, y: 2.9, r: 1.3, c: CHAKRA_ORANGE, s: 0.8 },
+        { x: 1.15, y: 3.1, r: 0.95, c: CHAKRA_BRAND, s: -1.1 },
+        { x: 0.8, y: 1.4, r: 0.78, c: '#c2691f', s: 1.35 },
+      ];
+      for (const sp of specs) {
+        const gr = makeGear(sp.r, Math.round(sp.r * 10), 0.45, std(sp.c, { emissive: sp.c, emissiveIntensity: 0.2, metalness: 0.45, roughness: 0.5 }), std('#3a2e22', { metalness: 0.5, roughness: 0.45 }));
+        gr.position.set(sp.x, sp.y, 0.05);
+        gr.userData.spinSpeed = sp.s;
+        gr.userData.spinAxis = 'z';
+        g.add(gr);
+      }
+      // a glowing status seam along the base of the housing
+      const seam = mesh(new THREE.PlaneGeometry(4.8, 0.1), std(CHAKRA_EMBER, { emissive: CHAKRA_EMBER, emissiveIntensity: 0.8, roughness: 0.4 }), false);
+      seam.position.set(0, 0.7, 0.0);
+      g.add(seam);
+      return g;
+    },
+    // warehouse shelving stacked with coloured material bins — inventory.
+    'inventory-rack': (seed) => {
+      const g = new THREE.Group();
+      const steel = std('#4a4138', { metalness: 0.4, roughness: 0.6 });
+      const W = 3.4;
+      const H = 4.0;
+      const D = 1.2;
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          const post = mesh(new THREE.BoxGeometry(0.16, H, 0.16), steel);
+          post.position.set((sx * W) / 2, H / 2, (sz * D) / 2);
+          g.add(post);
+        }
+      }
+      const binCols = ['#c46a2a', '#7a8a5a', '#5a6a8a', '#9a5a4a', '#b8923a', '#6a6a6a'];
+      let ci = seed;
+      for (let s = 0; s < 3; s++) {
+        const y = 1.0 + s * 1.3;
+        const shelf = mesh(new THREE.BoxGeometry(W, 0.1, D), steel);
+        shelf.position.set(0, y, 0);
+        shelf.receiveShadow = true;
+        g.add(shelf);
+        for (let b = 0; b < 3; b++) {
+          const bin = mesh(new THREE.BoxGeometry(0.85, 0.72, 0.85), std(binCols[ci++ % binCols.length], { roughness: 0.85 }));
+          bin.position.set(-W / 2 + 0.72 + b * 1.05, y + 0.46, 0);
+          g.add(bin);
+        }
+      }
+      return g;
+    },
+    // a pallet of raw materials — bars, sacks, or planks (varies by instance).
+    'material-pallet': (seed) => {
+      const g = new THREE.Group();
+      const pallet = mesh(new THREE.BoxGeometry(2.0, 0.18, 1.4), std('#8a6a44', { roughness: 0.9 }));
+      pallet.position.y = 0.09;
+      pallet.receiveShadow = true;
+      g.add(pallet);
+      const kind = seed % 3;
+      if (kind === 0) {
+        const barMat = std('#9aa0a6', { metalness: 0.6, roughness: 0.4 });
+        for (let i = 0; i < 6; i++) {
+          const bar = mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 8), barMat);
+          bar.rotation.z = Math.PI / 2;
+          bar.position.set(-0.32 + (i % 3) * 0.32, 0.32 + Math.floor(i / 3) * 0.26, -0.3 + (i % 2) * 0.5);
+          g.add(bar);
+        }
+      } else if (kind === 1) {
+        for (let i = 0; i < 4; i++) {
+          const sack = mesh(new THREE.SphereGeometry(0.44, 10, 8), std(['#b8923a', '#9a7a4a'][i % 2], { roughness: 1 }));
+          sack.scale.set(1, 0.8, 0.82);
+          sack.position.set(-0.5 + (i % 2) * 1.0, 0.46, -0.36 + Math.floor(i / 2) * 0.72);
+          g.add(sack);
+        }
+      } else {
+        for (let i = 0; i < 4; i++) {
+          const plank = mesh(new THREE.BoxGeometry(1.9, 0.12, 0.36), std('#a07a4a', { roughness: 0.9 }));
+          plank.position.set(0, 0.26 + i * 0.14, -0.5 + i * 0.32);
+          g.add(plank);
+        }
+      }
+      return g;
+    },
+    // a production line: blocks ride the belt and loop (materials in → product out).
+    conveyor: () => {
+      const g = new THREE.Group();
+      const L = 7.0;
+      const w = 1.2;
+      const steel = std('#3a342c', { metalness: 0.4, roughness: 0.6 });
+      for (const sx of [-1, 1]) {
+        for (const lz of [-1, 0, 1]) {
+          const leg = mesh(new THREE.BoxGeometry(0.18, 1.0, 0.18), steel);
+          leg.position.set(lz * (L / 2) * 0.85, 0.5, (sx * w) / 2);
+          g.add(leg);
+        }
+      }
+      const belt = mesh(new THREE.BoxGeometry(L, 0.12, w), std('#23201b', { roughness: 0.85 }));
+      belt.position.y = 1.05;
+      belt.receiveShadow = true;
+      g.add(belt);
+      for (const sx of [-1, 1]) {
+        const roller = mesh(new THREE.CylinderGeometry(0.22, 0.22, w + 0.1, 12), std('#5a5048', { metalness: 0.5 }));
+        roller.rotation.x = Math.PI / 2;
+        roller.position.set((sx * L) / 2, 1.05, 0);
+        g.add(roller);
+      }
+      const items: THREE.Object3D[] = [];
+      const itemCols = ['#c46a2a', '#7a8a5a', '#b8923a', '#5a6a8a'];
+      for (let i = 0; i < 5; i++) {
+        const it = mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), std(itemCols[i % itemCols.length], { roughness: 0.8 }));
+        it.position.set(-L / 2, 1.4, 0);
+        g.add(it);
+        items.push(it);
+      }
+      g.userData.conveyor = { items, from: new THREE.Vector3(-L / 2, 1.4, 0), to: new THREE.Vector3(L / 2, 1.4, 0), speed: 0.06 };
+      return g;
+    },
+    // a forge brazier — a tripod bowl of glowing embers (warm light + atmosphere).
+    brazier: () => {
+      const g = new THREE.Group();
+      const metalMat = std('#2e2823', { metalness: 0.4, roughness: 0.6 });
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        const leg = mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.7, 6), metalMat);
+        leg.position.set(Math.cos(a) * 0.36, 0.85, Math.sin(a) * 0.36);
+        leg.rotation.set(Math.cos(a) * 0.2, 0, -Math.sin(a) * 0.2);
+        g.add(leg);
+      }
+      const bowl = mesh(new THREE.CylinderGeometry(0.72, 0.46, 0.5, 12), metalMat);
+      bowl.position.y = 1.7;
+      const ember = mesh(new THREE.SphereGeometry(0.56, 12, 10), std(CHAKRA_EMBER, { emissive: '#ff5a10', emissiveIntensity: 1.0, roughness: 0.4 }), false);
+      ember.scale.set(1, 0.5, 1);
+      ember.position.y = 1.86;
+      g.add(bowl, ember);
+      return g;
+    },
+    // a bill-of-materials / type-inheritance tree: a glowing product node wired
+    // down to its component material nodes.
+    'bom-assembly': () => {
+      const g = new THREE.Group();
+      const base = mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.3, 8), std('#3a332b', { roughness: 0.7 }));
+      base.position.y = 0.15;
+      base.receiveShadow = true;
+      const post = mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 8), std('#5a5048', { metalness: 0.4 }));
+      post.position.y = 1.5;
+      g.add(base, post);
+      const product = mesh(new THREE.IcosahedronGeometry(0.62, 0), std(CHAKRA_ORANGE, { emissive: CHAKRA_ORANGE, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.5 }));
+      product.position.y = 3.0;
+      product.userData.spinSpeed = 0.5; // default Y axis
+      g.add(product);
+      const top = new THREE.Vector3(0, 3.0, 0);
+      const matCols = ['#7a8a5a', '#5a6a8a', '#b8923a', '#9a5a4a'];
+      const strutMat = std('#6a5a3a', { emissive: CHAKRA_EMBER, emissiveIntensity: 0.25 });
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + 0.4;
+        const px = Math.cos(a) * 1.55;
+        const pz = Math.sin(a) * 1.55;
+        const node = mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), std(matCols[i], { roughness: 0.75 }));
+        node.position.set(px, 1.0, pz);
+        g.add(node);
+        g.add(connect(new THREE.Vector3(px, 1.0, pz), top, 0.04, strutMat));
+      }
       return g;
     },
   };

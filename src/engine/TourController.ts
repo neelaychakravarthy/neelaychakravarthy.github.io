@@ -62,6 +62,15 @@ const STOPS: Array<{ id: string; lines: string[]; lead?: string[] }> = [
     ],
   },
   { id: 'sidekick', lines: ['Sidekick. A group-chat AI agent that lives in your Telegram and iMessage threads.', "It won the Eazo regional — that's the promotional video playing."] },
+  {
+    id: 'chakra',
+    lead: ['One more — and this one means the most to me.', "Let's head into Chakra."],
+    lines: [
+      'Chakra started as a bill-of-materials and inventory system for my family’s business.',
+      'I grew it into a full multi-tenant SaaS — every organization’s data fully isolated.',
+      'A transactional engine tracks the materials, builds the products, and keeps the books.',
+    ],
+  },
 ];
 const CLOSING = [
   "And that’s the tour.",

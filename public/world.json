@@ -34,17 +34,18 @@
         { "modelId": "pillar", "position": [-12.5, 0, 4] },
         { "modelId": "pillar", "position": [12.5, 0, 4] },
         { "modelId": "planter", "position": [-9, 0, -10.5] },
-        { "modelId": "planter", "position": [-2.5, 0, -9] },
+        { "modelId": "planter", "position": [-11, 0, -1] },
         { "modelId": "swimming-pool", "position": [25, 0, 7], "rotationY": -0.5 },
         { "modelId": "river", "position": [0, 0, 0] },
         { "modelId": "beach", "position": [37, 0, 0] },
         { "modelId": "beach", "position": [-37, 0, 0], "rotationY": 3.14159 },
-        { "modelId": "ski-mountain", "position": [-22, 0, -56], "collider": { "dx": 6, "dz": 3, "radius": 24 } }
+        { "modelId": "ski-mountain", "position": [-22, 0, -56], "collider": { "dx": 6, "dz": 3, "radius": 24 } },
+        { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 }
       ],
       "content": [
         {
           "type": "board",
-          "position": [4.8, 1.2, -6],
+          "position": [0, 1.2, -9.5],
           "width": 8.2,
           "accent": "#7fb4ff",
           "heading": "Neelay Chakravarthy",
@@ -62,7 +63,8 @@
       "pads": [
         { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },
         { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 },
-        { "id": "to-university", "position": [-5, 0, -8], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 }
+        { "id": "to-university", "position": [-5, 0, -8], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 },
+        { "id": "to-chakra", "position": [5, 0, -8], "target": "chakra", "label": "Chakra   ↗", "color": "#ff7a1f", "radius": 2.5 }
       ]
     },
     {
@@ -377,6 +379,74 @@
       ],
       "pads": [
         { "id": "to-classroom", "position": [0, 0, 10.5], "target": "classroom", "label": "←   Classroom", "color": "#c9d2de", "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "chakra",
+      "title": "Chakra — Multi-Tenant BoM & Inventory SaaS",
+      "environment": {
+        "skyTop": "#241813",
+        "skyBottom": "#c2671f",
+        "fogColor": "#7d3f1c",
+        "fogNear": 46,
+        "fogFar": 150,
+        "hemiSky": "#ffca7a",
+        "hemiGround": "#46291a",
+        "hemiIntensity": 1.2,
+        "sunColor": "#ffa94d",
+        "sunIntensity": 3.0,
+        "sunPosition": [-18, 24, 14],
+        "groundColor": "#4a3526"
+      },
+      "audio": { "music": "forge-mixo", "ambientRoot": 174.61, "ambientGain": 0.45 },
+      "atmosphere": { "particles": "fireflies", "particleColor": "#ffb061", "particleCount": 80 },
+      "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -3] },
+        { "modelId": "chakra-gear", "position": [0, 0, -11] },
+        { "modelId": "machine", "position": [-6.2, 0, -10.5], "rotationY": 0.32 },
+        { "modelId": "machine", "position": [6.2, 0, -10.5], "rotationY": -0.32 },
+        { "modelId": "bom-assembly", "position": [0, 0, -2] },
+        { "modelId": "inventory-rack", "position": [-8.5, 0, -2], "rotationY": 1.4 },
+        { "modelId": "inventory-rack", "position": [-8.5, 0, -6], "rotationY": 1.55 },
+        { "modelId": "inventory-rack", "position": [8.5, 0, -2], "rotationY": -1.4 },
+        { "modelId": "inventory-rack", "position": [8.5, 0, -6], "rotationY": -1.55 },
+        { "modelId": "conveyor", "position": [-5.5, 0, 3.5] },
+        { "modelId": "conveyor", "position": [5.5, 0, 3.5] },
+        { "modelId": "material-pallet", "position": [-6, 0, 0.5] },
+        { "modelId": "material-pallet", "position": [6, 0, 0.5] },
+        { "modelId": "material-pallet", "position": [-9.5, 0, -9.5] },
+        { "modelId": "material-pallet", "position": [9.5, 0, -9.5] },
+        { "modelId": "brazier", "position": [-3.6, 0, 5.5] },
+        { "modelId": "brazier", "position": [3.6, 0, 5.5] },
+        { "modelId": "brazier", "position": [-6.8, 0, -7.5] },
+        { "modelId": "brazier", "position": [6.8, 0, -7.5] },
+        { "modelId": "crate-stack", "position": [-10, 0, 3.5] },
+        { "modelId": "crate-stack", "position": [10, 0, 3.5] },
+        { "modelId": "gear", "position": [-9.5, 1.35, -12], "scale": 1.3 },
+        { "modelId": "gear", "position": [9.8, 1.15, -12], "scale": 1.0 }
+      ],
+      "content": [
+        {
+          "type": "board",
+          "position": [0, 1.2, -7],
+          "width": 8.6,
+          "accent": "#ff7a1f",
+          "heading": "Chakra",
+          "subheading": "Multi-Tenant BoM & Inventory SaaS",
+          "badge": "Personal Project  ·  Built for the family business  ·  2026",
+          "lines": [
+            "A bill-of-materials & inventory platform — built for my family’s business",
+            "Grown into a multi-tenant SaaS with session-derived tenant isolation",
+            "Config-driven transactional inventory & consumption engine",
+            "Type-inheritance modeling · CI-enforced 100% test coverage · Sentry",
+            "Next.js 16 · Drizzle ORM · Neon Postgres · Auth.js"
+          ]
+        },
+        { "type": "link", "label": "Live app", "url": "https://chakra-swart.vercel.app", "tooltip": "The live SaaS · Google sign-in  ↗", "position": [0, 0, 9.5] }
+      ],
+      "pads": [
+        { "id": "to-hub", "position": [0, 0, 11], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }
       ]
     }
   ]
