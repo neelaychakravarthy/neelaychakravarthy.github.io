@@ -22,7 +22,7 @@
         "groundColor": "#8bb06a"
       },
       "audio": { "music": "warm-major", "ambientRoot": 261.63, "ambientGain": 0.45 },
-      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70, "grassClear": [[25, 7, 11]] },
+      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70, "grassClear": [[25, 7, 11], [31, -6, 5]] },
       "river": { "centerZ": 0, "halfZ": 25, "bridgeHalf": 42 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
@@ -40,7 +40,8 @@
         { "modelId": "beach", "position": [37, 0, 0] },
         { "modelId": "beach", "position": [-37, 0, 0], "rotationY": 3.14159 },
         { "modelId": "ski-mountain", "position": [-22, 0, -56], "collider": { "dx": 6, "dz": 3, "radius": 24 } },
-        { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 }
+        { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 },
+        { "modelId": "wordle-board", "position": [34, 0, -6], "rotationY": 0.7, "scale": 0.5 }
       ],
       "content": [
         {
@@ -64,7 +65,8 @@
         { "id": "to-sidekick", "position": [-8.5, 0, 4], "target": "sidekick", "label": "←   Sidekick", "color": "#7fb4ff", "radius": 2.4 },
         { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 },
         { "id": "to-university", "position": [-5, 0, -8], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 },
-        { "id": "to-chakra", "position": [5, 0, -8], "target": "chakra", "label": "Chakra   ↗", "color": "#ff7a1f", "radius": 2.5 }
+        { "id": "to-chakra", "position": [5, 0, -8], "target": "chakra", "label": "Chakra   ↗", "color": "#ff7a1f", "radius": 2.5 },
+        { "id": "to-wordle", "position": [30, 0, -5], "target": "wordle", "label": "Wordle   ↗", "color": "#6aaa64", "radius": 2.5 }
       ]
     },
     {
@@ -444,6 +446,67 @@
           ]
         },
         { "type": "link", "label": "Live app", "url": "https://chakra-swart.vercel.app", "tooltip": "The live SaaS · Google sign-in  ↗", "position": [0, 0, 6.5] }
+      ],
+      "pads": [
+        { "id": "to-hub", "position": [0, 0, 11], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "wordle",
+      "title": "Wordle — Entropy-Based Solver",
+      "environment": {
+        "skyTop": "#dfe6ea",
+        "skyBottom": "#ffffff",
+        "fogColor": "#e9edf0",
+        "fogNear": 52,
+        "fogFar": 165,
+        "hemiSky": "#f0f4f7",
+        "hemiGround": "#c4cace",
+        "hemiIntensity": 1.15,
+        "sunColor": "#ffffff",
+        "sunIntensity": 2.5,
+        "sunPosition": [20, 34, 16],
+        "groundColor": "#c5cace"
+      },
+      "audio": { "music": "minimal-penta", "ambientRoot": 261.63, "ambientGain": 0.44 },
+      "atmosphere": { "grass": 0, "clouds": 5, "birds": 2, "particles": "pollen", "particleColor": "#d6efce", "particleCount": 40 },
+      "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -2] },
+        { "modelId": "wordle-board", "position": [0, 0, -11] },
+        { "modelId": "entropy-bars", "position": [-7.5, 0, -5.5], "rotationY": 0.6 },
+        { "modelId": "entropy-bars", "position": [7.5, 0, -5.5], "rotationY": -0.6 },
+        { "modelId": "tile-pylon", "position": [-9, 0, -0.5], "rotationY": 0.4 },
+        { "modelId": "tile-pylon", "position": [9, 0, -0.5], "rotationY": -0.4 },
+        { "modelId": "tile-pylon", "position": [-6, 0, 2.5] },
+        { "modelId": "tile-pylon", "position": [6, 0, 2.5] },
+        { "modelId": "tile-pylon", "position": [-3, 0, 4.5] },
+        { "modelId": "tile-pylon", "position": [3, 0, 4.5] },
+        { "modelId": "pillar", "position": [-10.5, 0, -9] },
+        { "modelId": "pillar", "position": [10.5, 0, -9] },
+        { "modelId": "pillar", "position": [-11, 0, 3] },
+        { "modelId": "pillar", "position": [11, 0, 3] },
+        { "modelId": "lamppost", "position": [-7.5, 0, 7] },
+        { "modelId": "lamppost", "position": [7.5, 0, 7] }
+      ],
+      "content": [
+        {
+          "type": "board",
+          "position": [0, 1.2, -6.5],
+          "width": 8.6,
+          "accent": "#6aaa64",
+          "heading": "Wordle Solver",
+          "subheading": "An entropy-based Wordle solver",
+          "badge": "Information Theory  ·  3Blue1Brown approach",
+          "lines": [
+            "Picks each guess to maximize expected information gain (bits)",
+            "Scores every candidate by the entropy of its green/yellow/gray feedback",
+            "Jupyter POC → parallelized Python (joblib · multiprocessing) → C",
+            "~70% runtime cut from parallelization; precompute + word-frequency next"
+          ]
+        },
+        { "type": "link", "label": "Code", "url": "https://github.com/neelaychakravarthy/wordle", "tooltip": "View the repo on GitHub  ↗", "position": [-2.8, 0, 8] },
+        { "type": "link", "label": "3Blue1Brown", "url": "https://youtu.be/v68zYyaEmEA", "tooltip": "The information-theory video  ↗", "position": [2.8, 0, 8] }
       ],
       "pads": [
         { "id": "to-hub", "position": [0, 0, 11], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }

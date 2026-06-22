@@ -927,6 +927,92 @@ export class AssetRegistry {
       }
       return g;
     },
+
+    // ---------- wordle (entropy-based solver) ----------
+    // The unmistakable Wordle icon: a tall 6×5 grid of guess tiles coloured to
+    // read as a finished solve — early rows mostly absent (gray), narrowing
+    // through present (yellow) to the all-correct (green) final row. Tile faces
+    // are emissive so they auto-register for bloom. The hero of the biome and the
+    // hub teaser (scaled down in the manifest).
+    'wordle-board': () => {
+      const g = new THREE.Group();
+      const GRAY = '#787c7e';
+      const YELLOW = '#c9b458';
+      const GREEN = '#6aaa64';
+      const palette = [GRAY, YELLOW, GREEN];
+      const cols = 5;
+      const rows = 6;
+      const ts = 0.9; // tile size
+      const gap = 0.16;
+      const cell = ts + gap;
+      const gridW = cols * ts + (cols - 1) * gap;
+      const gridH = rows * ts + (rows - 1) * gap;
+      const baseY = 1.4; // bottom of the grid above the ground
+      // a solve that narrows from gray → yellow → all-green (top row first)
+      const pattern = [
+        [0, 1, 0, 0, 2],
+        [1, 0, 2, 0, 0],
+        [0, 2, 2, 1, 0],
+        [2, 2, 0, 2, 1],
+        [2, 2, 2, 0, 2],
+        [2, 2, 2, 2, 2],
+      ];
+      const back = mesh(new THREE.BoxGeometry(gridW + 0.5, gridH + 0.5, 0.2), std('#1a1c1e', { roughness: 0.9 }));
+      back.position.set(0, baseY + gridH / 2, 0);
+      g.add(back);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const col = palette[pattern[r][c]];
+          const tile = mesh(new THREE.BoxGeometry(ts, ts, 0.22), std(col, { emissive: col, emissiveIntensity: 0.45, roughness: 0.5 }));
+          tile.position.set(-gridW / 2 + ts / 2 + c * cell, baseY + gridH - (ts / 2 + r * cell), 0.12);
+          g.add(tile);
+        }
+      }
+      const post = mesh(new THREE.BoxGeometry(0.5, baseY, 0.5), std('#2b2d2f'));
+      post.position.y = baseY / 2;
+      const base = mesh(new THREE.CylinderGeometry(1.4, 1.7, 0.4, 8), std('#3a3d40'));
+      base.position.y = 0.2;
+      base.receiveShadow = true;
+      g.add(post, base);
+      return g;
+    },
+    // A single guess tile on a pedestal — a scattered "token". seed picks its
+    // colour from the gray/yellow/green palette; the tile flips slowly on Y like
+    // a Wordle reveal animation (userData.spinSpeed, default Y axis).
+    'tile-pylon': (seed) => {
+      const g = new THREE.Group();
+      const cols = ['#787c7e', '#c9b458', '#6aaa64'];
+      const col = cols[seed % 3];
+      const ped = mesh(new THREE.CylinderGeometry(0.45, 0.6, 0.8, 8), std('#cfd4d8', { roughness: 0.9 }));
+      ped.position.y = 0.4;
+      ped.receiveShadow = true;
+      const tile = mesh(new THREE.BoxGeometry(1.0, 1.0, 0.24), std(col, { emissive: col, emissiveIntensity: 0.5, roughness: 0.5 }));
+      tile.position.y = 1.55;
+      tile.userData.spinSpeed = 0.4; // flips like a revealed tile
+      g.add(ped, tile);
+      return g;
+    },
+    // An information-gain histogram — the entropy bar chart at the heart of the
+    // 3b1b approach (taller bar = more expected bits). Bars are tinted by height
+    // (more information → greener) and emissive so they glow.
+    'entropy-bars': () => {
+      const g = new THREE.Group();
+      const heights = [2.4, 1.7, 2.9, 1.2, 2.1, 0.8, 1.5];
+      const n = heights.length;
+      const spacing = 0.7;
+      for (let i = 0; i < n; i++) {
+        const h = heights[i];
+        const col = h > 2.2 ? '#6aaa64' : h > 1.4 ? '#c9b458' : '#787c7e';
+        const bar = mesh(new THREE.BoxGeometry(0.5, h, 0.5), std(col, { emissive: col, emissiveIntensity: 0.4, roughness: 0.5 }));
+        bar.position.set(-((n - 1) / 2) * spacing + i * spacing, h / 2 + 0.2, 0);
+        g.add(bar);
+      }
+      const base = mesh(new THREE.BoxGeometry(n * spacing + 0.4, 0.2, 1.0), std('#cfd4d8', { roughness: 0.9 }));
+      base.position.y = 0.1;
+      base.receiveShadow = true;
+      g.add(base);
+      return g;
+    },
   };
 
   create(modelId: string, seed = 0): THREE.Object3D {
