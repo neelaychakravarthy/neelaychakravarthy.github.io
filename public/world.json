@@ -41,7 +41,8 @@
         { "modelId": "beach", "position": [-37, 0, 0], "rotationY": 3.14159 },
         { "modelId": "ski-mountain", "position": [-22, 0, -56], "colliders": [{ "dx": 0, "dz": 0, "radius": 20 }, { "dx": 17, "dz": 7, "radius": 13 }] },
         { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 },
-        { "modelId": "wordle-board", "position": [34, 0, -6], "rotationY": 0.7, "scale": 0.5 }
+        { "modelId": "wordle-board", "position": [30, 0, -9.5], "scale": 0.5 },
+        { "modelId": "gallery-wall", "position": [-30, 0, -9.5], "scale": 0.5 }
       ],
       "content": [
         {
@@ -66,7 +67,8 @@
         { "id": "to-goti", "position": [8.5, 0, 4], "target": "goti", "label": "Goti   →", "color": "#ffb056", "radius": 2.4 },
         { "id": "to-university", "position": [-5, 0, -8], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 },
         { "id": "to-chakra", "position": [5, 0, -8], "target": "chakra", "label": "Chakra   ↗", "color": "#ff7a1f", "radius": 2.5 },
-        { "id": "to-wordle", "position": [30, 0, -5], "target": "wordle", "label": "Wordle   ↗", "color": "#6aaa64", "radius": 2.5 }
+        { "id": "to-wordle", "position": [30, 0, -5], "target": "wordle", "label": "Wordle   ↗", "color": "#6aaa64", "radius": 2.5 },
+        { "id": "to-imagedup", "position": [-30, 0, -5], "target": "imagedup", "label": "Image Finder   ↖", "color": "#3fd0e0", "radius": 2.5 }
       ]
     },
     {
@@ -507,6 +509,67 @@
         },
         { "type": "link", "label": "Code", "url": "https://github.com/neelaychakravarthy/wordle", "tooltip": "View the repo on GitHub  ↗", "position": [-2.8, 0, 8] },
         { "type": "link", "label": "3Blue1Brown", "url": "https://youtu.be/v68zYyaEmEA", "tooltip": "The information-theory video  ↗", "position": [2.8, 0, 8] }
+      ],
+      "pads": [
+        { "id": "to-hub", "position": [0, 0, 11], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }
+      ]
+    },
+    {
+      "id": "imagedup",
+      "title": "Image Duplicate Finder",
+      "environment": {
+        "skyTop": "#1b1f3a",
+        "skyBottom": "#4a5278",
+        "fogColor": "#2e3556",
+        "fogNear": 50,
+        "fogFar": 160,
+        "hemiSky": "#aab4e0",
+        "hemiGround": "#3a3f5c",
+        "hemiIntensity": 1.0,
+        "sunColor": "#cfd6ff",
+        "sunIntensity": 1.9,
+        "sunPosition": [-18, 28, 14],
+        "groundColor": "#3a4060"
+      },
+      "audio": { "music": "techy-dorian", "ambientRoot": 220.0, "ambientGain": 0.44 },
+      "atmosphere": { "grass": 0, "clouds": 3, "particles": "dust", "particleColor": "#a9d8ff", "particleCount": 55, "stars": 110 },
+      "spawn": { "position": [0, 0, 13], "rotationY": 3.14159 },
+      "structures": [
+        { "modelId": "plaza", "position": [0, 0, -2] },
+        { "modelId": "gallery-wall", "position": [0, 0, -11] },
+        { "modelId": "embedding-orbs", "position": [-7.5, 0, -5.5], "rotationY": 0.5 },
+        { "modelId": "embedding-orbs", "position": [7.5, 0, -5.5], "rotationY": -0.5 },
+        { "modelId": "photo-frame", "position": [-9, 0, -0.5], "rotationY": 0.5 },
+        { "modelId": "photo-frame", "position": [9, 0, -0.5], "rotationY": -0.5 },
+        { "modelId": "photo-frame", "position": [-6, 0, 2.5], "rotationY": 0.2 },
+        { "modelId": "photo-frame", "position": [6, 0, 2.5], "rotationY": -0.2 },
+        { "modelId": "photo-frame", "position": [-3, 0, 4.5], "rotationY": 0.1 },
+        { "modelId": "photo-frame", "position": [3, 0, 4.5], "rotationY": -0.1 },
+        { "modelId": "pillar", "position": [-10.5, 0, -9] },
+        { "modelId": "pillar", "position": [10.5, 0, -9] },
+        { "modelId": "pillar", "position": [-11, 0, 3] },
+        { "modelId": "pillar", "position": [11, 0, 3] },
+        { "modelId": "lamppost", "position": [-7.5, 0, 7] },
+        { "modelId": "lamppost", "position": [7.5, 0, 7] }
+      ],
+      "content": [
+        {
+          "type": "board",
+          "position": [0, 1.2, -6.5],
+          "width": 8.8,
+          "accent": "#3fd0e0",
+          "heading": "Image Duplicate Finder",
+          "subheading": "Find & purge near-duplicate photos",
+          "badge": "Perceptual hashing  →  CLIP embeddings",
+          "lines": [
+            "Two-stage scan: a cheap pHash pre-filter, then CLIP for true matches",
+            "Cosine similarity ≥ 0.98 confirms a duplicate",
+            "Union-find clusters matches into groups to review or auto-delete",
+            "Python · CLIP ViT-B/32 · imagehash · PyTorch · customtkinter"
+          ]
+        },
+        { "type": "link", "label": "Code", "url": "https://github.com/neelaychakravarthy/image-duplicate-finder", "tooltip": "View the repo on GitHub  ↗", "position": [-2.8, 0, 8] },
+        { "type": "link", "label": "CLIP", "url": "https://github.com/openai/CLIP", "tooltip": "The model behind the matching  ↗", "position": [2.8, 0, 8] }
       ],
       "pads": [
         { "id": "to-hub", "position": [0, 0, 11], "target": "hub", "label": "←   Hub", "color": "#c9d2de", "radius": 2.4 }

@@ -1013,6 +1013,101 @@ export class AssetRegistry {
       g.add(base);
       return g;
     },
+
+    // ---------- image duplicate finder (perceptual hash → CLIP → union-find) ----------
+    // Hero: a gallery wall of framed photos where the found duplicates glow cyan —
+    // the headline idea (spotting near-identical images in a pile). Emissive
+    // highlights auto-register for bloom. Also the hub teaser (scaled down).
+    'gallery-wall': () => {
+      const g = new THREE.Group();
+      const DUP = '#3fd0e0';
+      const cols = 4;
+      const rows = 3;
+      const ts = 1.0;
+      const gap = 0.22;
+      const cell = ts + gap;
+      const gridW = cols * ts + (cols - 1) * gap;
+      const gridH = rows * ts + (rows - 1) * gap;
+      const baseY = 1.6;
+      const photoCols = ['#c98a5a', '#6a8fb0', '#8aa86a', '#b06a6a', '#9a7ab0', '#c9b458', '#5aa89a', '#a0a8b8', '#7a9ad0', '#6a8fb0', '#c07a9a', '#b06a6a'];
+      const dup = new Set([1, 9, 3, 11]); // two matched pairs (same colour) highlighted
+      const back = mesh(new THREE.BoxGeometry(gridW + 0.5, gridH + 0.5, 0.2), std('#1a1e2c', { roughness: 0.9 }));
+      back.position.set(0, baseY + gridH / 2, 0);
+      g.add(back);
+      let idx = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = -gridW / 2 + ts / 2 + c * cell;
+          const y = baseY + gridH - (ts / 2 + r * cell);
+          const isDup = dup.has(idx);
+          const frame = mesh(
+            new THREE.BoxGeometry(ts, ts, 0.16),
+            isDup ? std(DUP, { emissive: DUP, emissiveIntensity: 0.7, roughness: 0.4 }) : std('#2b3142', { roughness: 0.7 }),
+          );
+          frame.position.set(x, y, 0.12);
+          const photo = mesh(new THREE.BoxGeometry(ts * 0.78, ts * 0.78, 0.05), std(photoCols[idx], { roughness: 0.6, emissive: photoCols[idx], emissiveIntensity: 0.12 }));
+          photo.position.set(x, y, 0.22);
+          g.add(frame, photo);
+          idx++;
+        }
+      }
+      const post = mesh(new THREE.BoxGeometry(0.5, baseY, 0.5), std('#23283a'));
+      post.position.y = baseY / 2;
+      const base = mesh(new THREE.CylinderGeometry(1.3, 1.6, 0.4, 8), std('#2e3344'));
+      base.position.y = 0.2;
+      base.receiveShadow = true;
+      g.add(post, base);
+      return g;
+    },
+    // A single framed photo on an easel — gallery ambiance. seed picks the photo's
+    // colour from a muted palette.
+    'photo-frame': (seed) => {
+      const g = new THREE.Group();
+      const cols = ['#c98a5a', '#6a8fb0', '#8aa86a', '#b06a6a', '#9a7ab0', '#c9b458'];
+      const col = cols[seed % cols.length];
+      const post = mesh(new THREE.CylinderGeometry(0.08, 0.11, 1.7, 6), std('#23283a'));
+      post.position.y = 0.85;
+      const foot = mesh(new THREE.CylinderGeometry(0.3, 0.42, 0.18, 10), std('#2e3344'));
+      foot.position.y = 0.09;
+      foot.receiveShadow = true;
+      const frame = mesh(new THREE.BoxGeometry(1.3, 1.3, 0.12), std('#2b3142', { roughness: 0.6 }));
+      frame.position.y = 1.95;
+      const photo = mesh(new THREE.BoxGeometry(1.05, 1.05, 0.05), std(col, { roughness: 0.6, emissive: col, emissiveIntensity: 0.2 }));
+      photo.position.set(0, 1.95, 0.08);
+      g.add(post, foot, frame, photo);
+      return g;
+    },
+    // CLIP embedding space: glowing nodes grouped into clusters, with the matches
+    // inside each cluster wired together (the cosine-similarity graph that
+    // union-find collapses into duplicate groups).
+    'embedding-orbs': (seed) => {
+      const g = new THREE.Group();
+      const base = mesh(new THREE.CylinderGeometry(1.3, 1.5, 0.25, 10), std('#2a3042', { roughness: 0.8 }));
+      base.position.y = 0.12;
+      base.receiveShadow = true;
+      const stem = mesh(new THREE.CylinderGeometry(0.1, 0.13, 1.0, 6), std('#3a4258'));
+      stem.position.y = 0.6;
+      g.add(base, stem);
+      const edgeMat = std('#9fe8ff', { emissive: '#9fe8ff', emissiveIntensity: 0.55 });
+      const clusters = [
+        { c: new THREE.Vector3(-0.7, 1.5, -0.3), col: '#3fd0e0', n: 3, r: 0.5 },
+        { c: new THREE.Vector3(0.8, 2.2, 0.2), col: '#e05fb0', n: 3, r: 0.45 },
+        { c: new THREE.Vector3(0.25, 1.05, 0.6), col: '#7ab0ff', n: 2, r: 0.4 },
+      ];
+      for (const cl of clusters) {
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i < cl.n; i++) {
+          const a = (i / cl.n) * Math.PI * 2 + seed;
+          const p = new THREE.Vector3(cl.c.x + Math.cos(a) * cl.r, cl.c.y + Math.sin(a * 1.3) * cl.r * 0.6, cl.c.z + Math.sin(a) * cl.r);
+          const orb = mesh(new THREE.SphereGeometry(0.16, 12, 10), std(cl.col, { emissive: cl.col, emissiveIntensity: 0.9, roughness: 0.3 }), false);
+          orb.position.copy(p);
+          g.add(orb);
+          pts.push(p);
+        }
+        for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) g.add(connect(pts[i], pts[j], 0.025, edgeMat));
+      }
+      return g;
+    },
   };
 
   create(modelId: string, seed = 0): THREE.Object3D {
