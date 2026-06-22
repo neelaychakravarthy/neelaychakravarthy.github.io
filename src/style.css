@@ -168,5 +168,29 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ---- floating start/resume-tour button (free roam) ---- */
+#start-tour {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 650;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(20, 32, 48, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f2f7ff;
+  cursor: pointer;
+  z-index: 26;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+#start-tour:hover { background: rgba(36, 56, 84, 0.7); transform: translateX(-50%) translateY(-1px); }
+
 /* lil-gui placement tweak */
 .lil-gui.root { z-index: 20; }

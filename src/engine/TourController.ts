@@ -148,6 +148,7 @@ export class TourController {
     this.active = true;
     this.aborted = false;
     this.time = 0;
+    this.d.unit.stop(); // drop any free-roam drive target so we don't drift
     this.d.setTourActive(true);
     this.d.rig.enabled = false;
     this.skipBtn.style.display = 'block';
@@ -193,7 +194,9 @@ export class TourController {
     await this.sayAll(WELCOME);
     for (let i = 0; i < STOPS.length; i++) {
       if (this.aborted) return;
-      if (i > 0) await this.navigateTo(STOPS[i].id, STOPS[i].lead);
+      // Navigate to every stop including the first — a no-op when already at the
+      // hub (fresh start), but drives back when the tour is started mid-roam.
+      await this.navigateTo(STOPS[i].id, STOPS[i].lead);
       await this.tourBiome(STOPS[i].lines);
     }
     if (this.aborted) return;

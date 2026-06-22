@@ -138,6 +138,9 @@ async function boot() {
 
   let locked = false;
   let tourActive = false;
+  /** True once the visitor has left the start screen (free roam or a finished
+   *  tour) — gates the floating "Guided tour" button. */
+  let entered = false;
 
   const audio = new AudioManager();
   audio.setBiome(start.config.audio);
@@ -239,9 +242,28 @@ async function boot() {
     padGraph,
     setTourActive: (a) => {
       tourActive = a;
+      updateTourButton();
     },
     onEnd: showHint, // tour over → free roam: re-show the controls hint
   });
+
+  // Floating "Guided tour" button: lets a free-roaming visitor (re)start the tour
+  // at any time — whether they chose Free roam at the start, or skipped the tour
+  // partway to explore and now want to ride along again. Hidden during the tour
+  // itself (the Skip button takes over) and on the start screen.
+  const tourBtn = document.createElement('button');
+  tourBtn.id = 'start-tour';
+  tourBtn.textContent = '▶  Guided tour';
+  tourBtn.addEventListener('click', () => {
+    audio.unlock();
+    fadeHint();
+    tour.start(); // restarts from the top; drives back to the hub first
+  });
+  document.body.appendChild(tourBtn);
+  function updateTourButton() {
+    tourBtn.style.display = entered && !tourActive ? 'block' : 'none';
+  }
+  updateTourButton();
 
   function showStartScreen() {
     const action = document.getElementById('loader-action');
@@ -266,7 +288,8 @@ async function boot() {
         audio.unlock();
         hideLoader();
         fadeHint();
-        tour.start();
+        entered = true;
+        tour.start(); // setTourActive(true) keeps the floating button hidden
       }),
     );
     row.appendChild(
@@ -274,6 +297,8 @@ async function boot() {
         audio.unlock();
         hideLoader();
         showHint();
+        entered = true;
+        updateTourButton();
       }),
     );
     action.appendChild(row);
