@@ -21,7 +21,7 @@ export interface GrassClearInfo {
  */
 const GRASS_R = 54; // carpet half-extent (follows the unit)
 const GRASS_FADE = 36; // blades taper to zero height between here and GRASS_R
-const GRASS_GRID = 190; // blades per side at full quality (GRID² total)
+const GRASS_GRID = 268; // blades per side at full quality (GRID² total)
 const GRASS_MAX_CIRCLES = 24;
 const GRASS_MAX_RECTS = 10;
 
@@ -130,7 +130,10 @@ class Layer {
     // world cell it currently covers (in the vertex shader), so the lawn stays
     // world-anchored as the carpet slides — no swimming, no edge. Density and
     // count are constant regardless of how far you drive.
-    const grid = Math.max(48, Math.round(GRASS_GRID * Math.sqrt(getQuality().grassScale * density)));
+    // Force an even grid so R/cell (= grid/2) is an integer — that keeps the
+    // per-cell floor() on a half-integer and prevents the carpet from flickering.
+    const raw = Math.max(48, Math.round(GRASS_GRID * Math.sqrt(getQuality().grassScale * density)));
+    const grid = raw + (raw % 2);
     const cell = (GRASS_R * 2) / grid;
     const count = grid * grid;
     this.grassCell = cell;
