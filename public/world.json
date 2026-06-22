@@ -22,7 +22,7 @@
         "groundColor": "#8bb06a"
       },
       "audio": { "music": "warm-major", "ambientRoot": 261.63, "ambientGain": 0.45 },
-      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70, "grassClear": [[25, 7, 11], [31, -6, 5]] },
+      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70, "grassClear": [[0, -2, 7.2], [25, 7, 7.6, 4.6, -0.5], [37, 0, 5.7, 25], [-37, 0, 5.7, 25], [-22, -56, 20], [-5, -49, 13]] },
       "river": { "centerZ": 0, "halfZ": 25, "bridgeHalf": 42 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
@@ -39,7 +39,7 @@
         { "modelId": "river", "position": [0, 0, 0] },
         { "modelId": "beach", "position": [37, 0, 0] },
         { "modelId": "beach", "position": [-37, 0, 0], "rotationY": 3.14159 },
-        { "modelId": "ski-mountain", "position": [-22, 0, -56], "collider": { "dx": 6, "dz": 3, "radius": 24 } },
+        { "modelId": "ski-mountain", "position": [-22, 0, -56], "colliders": [{ "dx": 0, "dz": 0, "radius": 20 }, { "dx": 17, "dz": 7, "radius": 13 }] },
         { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 },
         { "modelId": "wordle-board", "position": [34, 0, -6], "rotationY": 0.7, "scale": 0.5 }
       ],
@@ -221,7 +221,7 @@
         "groundColor": "#86a862"
       },
       "audio": { "music": "bell-pairs", "ambientRoot": 233.08, "ambientGain": 0.44 },
-      "atmosphere": { "grass": 0.9, "grassColor": "#7eb96a", "clouds": 5, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 60 },
+      "atmosphere": { "grass": 0.9, "grassColor": "#7eb96a", "clouds": 5, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 60, "grassClear": [[0, -3, 7.2]] },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
         { "modelId": "plaza", "position": [0, 0, -3] },

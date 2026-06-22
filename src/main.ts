@@ -112,7 +112,7 @@ async function boot() {
   );
 
   const atmosphere = new Atmosphere(engine.scene);
-  atmosphere.setBiome(start.config.atmosphere);
+  atmosphere.setBiome(start.config.atmosphere, { river: start.river, pads: start.pads });
 
   const rig = new CameraRig(engine.camera, engine.renderer.domElement);
   // gentle intro: ease the camera in from slightly further out
@@ -180,7 +180,7 @@ async function boot() {
     const from = biomes.current;
     const to = biomes.build(target, true);
     audio.setBiome(to.config.audio);
-    atmosphere.setBiome(to.config.atmosphere);
+    atmosphere.setBiome(to.config.atmosphere, { river: to.river, pads: to.pads });
     engine.postfx.setSelection([...from.glows, ...to.glows]);
     const spawn = to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
     transition.morph({

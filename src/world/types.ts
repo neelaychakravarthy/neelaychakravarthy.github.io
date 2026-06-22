@@ -35,6 +35,10 @@ export interface StructureConfig {
   /** Circular no-go region (local offset from the structure + radius) the unit
    *  can't enter — e.g. a mountain base or open water. Drives around it. */
   collider?: { dx?: number; dz?: number; radius: number };
+  /** Multiple circular no-go regions, for models whose footprint isn't a single
+   *  circle (e.g. a two-peaked mountain). Each is a local offset + radius from the
+   *  structure origin; combined with `collider` if both are present. */
+  colliders?: Array<{ dx?: number; dz?: number; radius: number }>;
 }
 
 export type ContentKind = 'title' | 'subtitle' | 'fact' | 'link' | 'panel' | 'screen' | 'board';
@@ -100,7 +104,11 @@ export interface AtmosphereConfig {
   /** grass density 0..1 (0 = none, e.g. indoor rooms) */
   grass?: number;
   grassColor?: string;
-  /** circles [x, z, radius] kept grass-free (around pools, decks, etc.) */
+  /** Regions kept grass-free (plaza discs, pools, sand, etc.). Each entry is:
+   *  - a circle  `[x, z, radius]`
+   *  - an axis-aligned rect `[x, z, halfX, halfZ]`
+   *  - a rotated rect `[x, z, halfX, halfZ, rotationY]`
+   *  Portal pads and the river/ocean are cleared automatically. */
   grassClear?: number[][];
   /** number of drifting clouds */
   clouds?: number;

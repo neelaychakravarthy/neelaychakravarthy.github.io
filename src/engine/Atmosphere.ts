@@ -1,8 +1,29 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
 import type { AtmosphereConfig } from '../world/types';
-import { wrapNearest } from './wrap';
+import { WORLD_PERIOD } from './wrap';
 import { getQuality } from './quality';
+import type { RiverBlock } from './Unit';
+
+/** Extra biome geometry the grass needs so it carpets the whole green ground but
+ *  skips water and portal pads. Pads/river come from the built biome. */
+export interface GrassClearInfo {
+  river?: RiverBlock | null;
+  pads?: Array<{ position: THREE.Vector3; radius: number }>;
+}
+
+/**
+ * The grass is an "infinite" carpet that follows the unit, so there is never a
+ * visible edge — wherever you drive, dense lawn is under you and it fades softly
+ * into the distance. Blades are anchored to a world grid (hashed per cell in the
+ * shader) so the field stays put as the carpet slides; cleared regions (plaza,
+ * pool, sand, pads, water) collapse blades to zero height by world position.
+ */
+const GRASS_R = 54; // carpet half-extent (follows the unit)
+const GRASS_FADE = 36; // blades taper to zero height between here and GRASS_R
+const GRASS_GRID = 190; // blades per side at full quality (GRID² total)
+const GRASS_MAX_CIRCLES = 24;
+const GRASS_MAX_RECTS = 10;
 
 /**
  * Atmosphere — procedural ambient life, configured per biome and crossfaded on
@@ -13,7 +34,7 @@ import { getQuality } from './quality';
  * sinking/rising), and it animates every frame via update().
  */
 
-const BLADE_H = 0.45;
+const BLADE_H = 0.5;
 
 /** Keep `v` within ±bound of `center`, wrapping by 2·bound — so a world-anchored
  *  element stays near the unit (coverage) while only drifting by its own motion
@@ -78,7 +99,10 @@ class Layer {
   private readonly ambient = new THREE.Group();
   intensity = 0;
   private grass?: THREE.InstancedMesh;
-  private grassMat?: THREE.MeshStandardMaterial;
+  private grassMat?: THREE.MeshLambertMaterial;
+  /** World-grid cell size of the grass carpet; the carpet snaps to this so blades
+   *  stay world-anchored as it follows the unit. */
+  private grassCell = 1;
   private fadeMats: Array<{ mat: THREE.Material & { opacity: number }; base: number }> = [];
   private birds: Bird[] = [];
   private clouds: Cloud[] = [];
@@ -86,12 +110,12 @@ class Layer {
   private stars?: { points: THREE.Points; phases: Float32Array; base: THREE.Color };
   private readonly sharedTex: THREE.Texture;
 
-  constructor(scene: THREE.Scene, cfg: AtmosphereConfig | undefined, sharedTex: THREE.Texture) {
+  constructor(scene: THREE.Scene, cfg: AtmosphereConfig | undefined, sharedTex: THREE.Texture, clear?: GrassClearInfo) {
     this.sharedTex = sharedTex;
     this.group.add(this.ambient);
     scene.add(this.group);
     const c = cfg ?? {};
-    if (c.grass) this.buildGrass(c.grass, c.grassColor ?? '#6fae5a', c.grassClear ?? []);
+    if (c.grass) this.buildGrass(c.grass, c.grassColor ?? '#6fae5a', c.grassClear ?? [], clear ?? {});
     if (c.clouds) this.buildClouds(c.clouds);
     if (c.birds) this.buildBirds(c.birds);
     if (c.particles && c.particles !== 'none') this.buildParticles(c.particles, c.particleCount ?? 70, c.particleColor);
@@ -100,63 +124,143 @@ class Layer {
   }
 
   // ---- builders ----
-  private buildGrass(density: number, color: string, clearings: number[][]) {
-    const target = Math.min(8000, Math.max(1, Math.floor(density * 7000 * getQuality().grassScale)));
-    // collect blade positions, skipping cleared circles (pool deck, etc.)
-    const pts: number[] = [];
-    let attempts = 0;
-    while (pts.length / 2 < target && attempts < target * 4) {
-      attempts++;
-      const a = Math.random() * Math.PI * 2;
-      const r = 8.5 + Math.pow(Math.random(), 0.7) * 18.5;
-      const x = Math.cos(a) * r + (Math.random() - 0.5) * 0.8;
-      const z = Math.sin(a) * r + (Math.random() - 0.5) * 0.8;
-      let blocked = false;
-      for (const c of clearings) {
-        const dx = x - c[0];
-        const dz = z - c[1];
-        if (dx * dx + dz * dz < c[2] * c[2]) {
-          blocked = true;
-          break;
-        }
+  private buildGrass(density: number, color: string, clearings: number[][], clear: GrassClearInfo) {
+    // An infinite carpet: a GRID×GRID block of blades on a regular grid that
+    // follows the unit (snapped to the cell size). Each blade re-hashes to the
+    // world cell it currently covers (in the vertex shader), so the lawn stays
+    // world-anchored as the carpet slides — no swimming, no edge. Density and
+    // count are constant regardless of how far you drive.
+    const grid = Math.max(48, Math.round(GRASS_GRID * Math.sqrt(getQuality().grassScale * density)));
+    const cell = (GRASS_R * 2) / grid;
+    const count = grid * grid;
+    this.grassCell = cell;
+
+    // Cleared regions as shader uniforms: circles ([x,z,r]) and (optionally
+    // rotated) rects ([x,z,hx,hz] / [x,z,hx,hz,rot]) from the manifest, plus
+    // portal pads, plus the river/ocean band — tested per blade by world position.
+    const circles: THREE.Vector3[] = [];
+    const rects: THREE.Vector4[] = [];
+    const rectRot: number[] = [];
+    for (const c of clearings) {
+      if (c.length >= 4) {
+        rects.push(new THREE.Vector4(c[0], c[1], c[2], c[3]));
+        rectRot.push(c[4] ?? 0);
+      } else {
+        circles.push(new THREE.Vector3(c[0], c[1], c[2]));
       }
-      if (!blocked) pts.push(x, z);
     }
-    const count = pts.length / 2;
-    const geo = new THREE.PlaneGeometry(0.11, BLADE_H, 1, 1);
+    for (const p of clear.pads ?? []) circles.push(new THREE.Vector3(p.position.x, p.position.z, p.radius + 0.4));
+    const numCircles = Math.min(circles.length, GRASS_MAX_CIRCLES);
+    const numRects = Math.min(rects.length, GRASS_MAX_RECTS);
+    while (circles.length < GRASS_MAX_CIRCLES) circles.push(new THREE.Vector3());
+    while (rects.length < GRASS_MAX_RECTS) {
+      rects.push(new THREE.Vector4());
+      rectRot.push(0);
+    }
+    const river = clear.river;
+    const riverVec = new THREE.Vector4(river?.centerZ ?? 0, river?.halfZ ?? 0, river?.bridgeHalf ?? 0, river ? 1 : 0);
+
+    const geo = new THREE.PlaneGeometry(0.16, BLADE_H, 1, 1);
     geo.translate(0, BLADE_H / 2, 0);
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+    // Lambert (matte) is much cheaper per fragment than PBR and grass has no
+    // specular anyway, so this is a big fill-rate win at no visual cost.
+    const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = { value: 0 };
+      shader.uniforms.uCenter = { value: new THREE.Vector2() };
+      shader.uniforms.uCell = { value: cell };
+      shader.uniforms.uR = { value: GRASS_R };
+      shader.uniforms.uFade = { value: GRASS_FADE };
+      shader.uniforms.uPeriod = { value: WORLD_PERIOD };
+      shader.uniforms.uNumCircles = { value: numCircles };
+      shader.uniforms.uCircles = { value: circles };
+      shader.uniforms.uNumRects = { value: numRects };
+      shader.uniforms.uRects = { value: rects };
+      shader.uniforms.uRectRot = { value: rectRot };
+      shader.uniforms.uRiver = { value: riverVec };
       mat.userData.shader = shader;
       shader.vertexShader =
-        'uniform float uTime;\n' +
+        `uniform float uTime; uniform vec2 uCenter; uniform float uCell; uniform float uR; uniform float uFade; uniform float uPeriod;
+         uniform int uNumCircles; uniform vec3 uCircles[${GRASS_MAX_CIRCLES}];
+         uniform int uNumRects; uniform vec4 uRects[${GRASS_MAX_RECTS}]; uniform float uRectRot[${GRASS_MAX_RECTS}];
+         uniform vec4 uRiver; varying float vCV;
+         float hash21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+        ` +
         shader.vertexShader.replace(
           '#include <begin_vertex>',
           `#include <begin_vertex>
-           float ix = instanceMatrix[3].x; float iz = instanceMatrix[3].z;
-           float sway = sin(uTime * 1.6 + ix * 0.5 + iz * 0.4) * 0.18 + sin(uTime * 2.4 + ix) * 0.05;
-           transformed.x += sway * (position.y / ${BLADE_H.toFixed(2)});`,
+           vec2 ibase = vec2(instanceMatrix[3][0], instanceMatrix[3][2]);
+           // Each blade maps to the world grid cell it currently covers. ibase is
+           // offset by half a cell, so this lands on a half-integer — plain floor()
+           // (no +0.5) keeps the result stable under float noise as the carpet
+           // slides, which is what prevents the grid from flickering while moving.
+           vec2 wcell = floor((uCenter + ibase) / uCell);
+           float h1 = hash21(wcell);
+           float h2 = hash21(wcell + vec2(17.3, 5.1));
+           float h3 = hash21(wcell + vec2(41.7, 29.4));
+           float h4 = hash21(wcell + vec2(71.1, 53.8));
+           // Generous jitter (blades wander into neighbouring cells) breaks up the
+           // regular grid so it doesn't shimmer/moiré in motion.
+           vec2 jit = (vec2(h1, h2) - 0.5) * uCell * 1.6;
+           vec2 wp = wcell * uCell + jit;            // blade world position (x,z)
+           float dist = length(wp - uCenter);
+           float vis = clamp((uR - dist) / (uR - uFade), 0.0, 1.0);
+           // All clearings cluster near the biome origin, so blades far from it
+           // (the common case while roaming) skip every test below.
+           vec2 wo = wp - uPeriod * floor(wp / uPeriod + 0.5);
+           if (dot(wo, wo) < 88.0 * 88.0) {
+             for (int i = 0; i < ${GRASS_MAX_CIRCLES}; i++) {
+               if (i >= uNumCircles) break;
+               vec3 c = uCircles[i];
+               vec2 d = wp - c.xy; d -= uPeriod * floor(d / uPeriod + 0.5);
+               if (dot(d, d) < c.z * c.z) vis = 0.0;
+             }
+             for (int i = 0; i < ${GRASS_MAX_RECTS}; i++) {
+               if (i >= uNumRects) break;
+               vec4 r = uRects[i];
+               vec2 d = wp - r.xy; d -= uPeriod * floor(d / uPeriod + 0.5);
+               float rot = uRectRot[i]; float cs = cos(rot), sn = sin(rot);
+               vec2 l = vec2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
+               if (abs(l.x) < r.z && abs(l.y) < r.w) vis = 0.0;
+             }
+             if (uRiver.w > 0.5) {
+               float dz = wp.y - uRiver.x; dz -= uPeriod * floor(dz / uPeriod + 0.5);
+               float dx = wp.x; dx -= uPeriod * floor(dx / uPeriod + 0.5);
+               if (abs(dz) < uRiver.y && abs(dx) > uRiver.z) vis = 0.0;
+             }
+           }
+           float ang = h3 * 6.2831853;
+           float ca = cos(ang), sa = sin(ang);
+           vec3 gp = transformed;
+           gp.y *= 0.7 + h4 * 0.6;                   // height variation
+           gp.x *= 0.75 + h2 * 0.55;                 // width variation
+           float sway = sin(uTime * 1.6 + wp.x * 0.5 + wp.y * 0.4) * 0.18 + sin(uTime * 2.4 + wp.x) * 0.05;
+           gp.x += sway * (gp.y / ${BLADE_H.toFixed(2)});
+           gp.xz = vec2(gp.x * ca - gp.z * sa, gp.x * sa + gp.z * ca);  // yaw
+           gp.y *= vis;                              // fade / clear → collapse to ground
+           gp.xz += wp - uCenter - ibase;            // land on the blade's world cell
+           transformed = gp;
+           vCV = h4;`,
         );
+      shader.fragmentShader =
+        'varying float vCV;\n' +
+        shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+           diffuseColor.rgb *= mix(0.8, 1.16, vCV);`);
     };
+
     const mesh = new THREE.InstancedMesh(geo, mat, count);
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     mesh.frustumCulled = false;
     const dummy = new THREE.Object3D();
-    const base = new THREE.Color(color);
-    const col = new THREE.Color();
-    for (let i = 0; i < count; i++) {
-      dummy.position.set(pts[i * 2], 0, pts[i * 2 + 1]);
-      dummy.rotation.y = Math.random() * Math.PI;
-      dummy.scale.set(0.85 + Math.random() * 0.5, 0.8 + Math.random() * 0.4, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      col.copy(base).offsetHSL((Math.random() - 0.5) * 0.04, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.13);
-      mesh.setColorAt(i, col);
+    for (let j = 0; j < grid; j++) {
+      for (let i = 0; i < grid; i++) {
+        dummy.position.set(-GRASS_R + (i + 0.5) * cell, 0, -GRASS_R + (j + 0.5) * cell);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(j * grid + i, dummy.matrix);
+      }
     }
     mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     this.grass = mesh;
     this.grassMat = mat;
     this.group.add(mesh);
@@ -293,10 +397,20 @@ class Layer {
   }
 
   update(dt: number, t: number, unitX: number, unitZ: number) {
-    // Grass wraps to the nearest plaza image; only the star dome follows the unit.
-    if (this.grass) this.grass.position.set(wrapNearest(unitX, 0), 0, wrapNearest(unitZ, 0));
+    // The grass carpet follows the unit, snapped to its cell grid so blades stay
+    // world-anchored (no swimming) while there's always lawn under the car.
+    if (this.grass) {
+      const cell = this.grassCell;
+      const cx = Math.round(unitX / cell) * cell;
+      const cz = Math.round(unitZ / cell) * cell;
+      this.grass.position.set(cx, 0, cz);
+      const shader = this.grassMat?.userData.shader;
+      if (shader) {
+        shader.uniforms.uTime.value = t;
+        shader.uniforms.uCenter.value.set(cx, cz);
+      }
+    }
     this.ambient.position.set(unitX, 0, unitZ);
-    if (this.grassMat?.userData.shader) this.grassMat.userData.shader.uniforms.uTime.value = t;
 
     // Birds circle a world-space centre that wraps to stay near the unit, so they
     // stream past with real parallax rather than sticking to the screen.
@@ -377,12 +491,12 @@ export class Atmosphere {
 
   constructor(private scene: THREE.Scene) {}
 
-  setBiome(cfg: AtmosphereConfig | undefined) {
+  setBiome(cfg: AtmosphereConfig | undefined, clear?: GrassClearInfo) {
     const old = this.layer;
     if (old) {
       gsap.to(old, { intensity: 0, duration: 0.9, ease: 'power1.in', onUpdate: () => old.apply(), onComplete: () => old.dispose() });
     }
-    const next = new Layer(this.scene, cfg, this.sharedTex);
+    const next = new Layer(this.scene, cfg, this.sharedTex, clear);
     this.layer = next;
     gsap.to(next, { intensity: 1, duration: 1.6, ease: 'power1.out', onUpdate: () => next.apply() });
   }

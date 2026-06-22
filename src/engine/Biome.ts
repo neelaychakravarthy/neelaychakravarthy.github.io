@@ -77,17 +77,18 @@ function buildBiome(
     if (s.rotationY) obj.rotation.y = s.rotationY;
     if (s.scale) obj.scale.setScalar(s.scale);
     if (s.backdrop) obj.userData.backdrop = true;
-    if (s.collider) {
+    const colliderDefs = [...(s.collider ? [s.collider] : []), ...(s.colliders ?? [])];
+    for (const def of colliderDefs) {
       const r = s.rotationY ?? 0;
       const sc = s.scale ?? 1;
-      const dx = (s.collider.dx ?? 0) * sc;
-      const dz = (s.collider.dz ?? 0) * sc;
+      const dx = (def.dx ?? 0) * sc;
+      const dz = (def.dz ?? 0) * sc;
       colliders.push({
         ax: s.position[0],
         az: s.position[2],
         dx: dx * Math.cos(r) + dz * Math.sin(r),
         dz: -dx * Math.sin(r) + dz * Math.cos(r),
-        radius: s.collider.radius * sc,
+        radius: def.radius * sc,
       });
     }
     addItem(obj);
