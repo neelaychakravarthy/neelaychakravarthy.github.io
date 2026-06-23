@@ -5,6 +5,7 @@ import type { CameraRig } from './CameraRig';
 import type { AudioManager } from './AudioManager';
 import type { LiftConfig } from '../world/types';
 import { SUMMIT_BASE_Y } from './summit';
+import { wrapNearest } from './wrap';
 
 /**
  * LiftController — a real chair-lift, in-world (no biome switch).
@@ -54,6 +55,8 @@ export class LiftController {
   private cfg?: LiftConfig;
   private from = new THREE.Vector3();
   private to = new THREE.Vector3();
+  private offX = 0; // periodic offset to the mountain image the car boarded at
+  private offZ = 0;
   private readonly tmp = new THREE.Vector3();
   private readonly tmp2 = new THREE.Vector3();
 
@@ -75,9 +78,14 @@ export class LiftController {
     this.t = 0;
     this.cfg = cfg;
     this.dur = cfg.duration ?? 4;
-    this.from.set(cfg.ride[0][0], cfg.ride[0][1], cfg.ride[0][2]);
+    // The world loops: shift the whole ride to the mountain image the car is
+    // actually standing on, so it rides this lift — never teleported to another.
+    const p = this.d.unit.position;
+    this.offX = wrapNearest(p.x, cfg.ride[0][0]) - cfg.ride[0][0];
+    this.offZ = wrapNearest(p.z, cfg.ride[0][2]) - cfg.ride[0][2];
+    this.from.set(cfg.ride[0][0] + this.offX, cfg.ride[0][1], cfg.ride[0][2] + this.offZ);
     const last = cfg.ride[cfg.ride.length - 1];
-    this.to.set(last[0], last[1], last[2]);
+    this.to.set(last[0] + this.offX, last[1], last[2] + this.offZ);
     this.d.unit.stop();
     this.d.rig.enabled = false;
     this.d.setActive(true);
@@ -140,7 +148,7 @@ export class LiftController {
     }
     this.carrying = false;
     this.d.fx.burst(this.d.unit.position.clone(), '#eaf6ff', 150); // released
-    this.d.unit.setTarget(this.tmp.set(cfg.land[0], obj.position.y, cfg.land[1]));
+    this.d.unit.setTarget(this.tmp.set(cfg.land[0] + this.offX, obj.position.y, cfg.land[1] + this.offZ));
     this.phase = 'land';
     this.t = 0;
   }

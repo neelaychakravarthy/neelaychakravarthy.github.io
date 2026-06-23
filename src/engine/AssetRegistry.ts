@@ -681,9 +681,9 @@ export class AssetRegistry {
       const rockDk = std('#7c8590', { roughness: 1 });
       const snowMat = std('#eef4fb', { roughness: 0.9 });
       // truncated cone (frustum): wide base, broad flat top to carry the summit
-      const body = mesh(new THREE.CylinderGeometry(15, 27, 24, 12), rockMat);
+      const body = mesh(new THREE.CylinderGeometry(15, 26, 24, 12), rockMat);
       body.position.y = 12;
-      const skirt = mesh(new THREE.CylinderGeometry(20, 30, 9, 12), rockDk);
+      const skirt = mesh(new THREE.CylinderGeometry(21, 27, 9, 12), rockDk);
       skirt.position.y = 4.5;
       const snowSkirt = mesh(new THREE.CylinderGeometry(15.4, 19, 8, 12), snowMat);
       snowSkirt.position.y = 20;

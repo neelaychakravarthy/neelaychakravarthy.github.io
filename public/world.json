@@ -39,7 +39,7 @@
         { "modelId": "river", "position": [0, 0, 0] },
         { "modelId": "beach", "position": [37, 0, 0] },
         { "modelId": "beach", "position": [-37, 0, 0], "rotationY": 3.14159 },
-        { "modelId": "ski-mountain", "position": [-22, 0, -56], "colliders": [{ "dx": 0, "dz": 0, "radius": 27 }] },
+        { "modelId": "ski-mountain", "position": [-22, 0, -56], "colliders": [{ "dx": 0, "dz": 0, "radius": 28.5 }] },
         { "modelId": "snow-fall", "position": [-22, 24, -56] },
         { "modelId": "snowman", "position": [-19, 26.55, -52], "rotationY": 2.4 },
         { "modelId": "snow-pine", "position": [-30, 25.97, -58] },

@@ -3,8 +3,13 @@
  * snow dome the car drives on after the lift carries it up. This module defines
  * that drivable surface so the mountain mesh and the car's height-following agree.
  *
- * Coordinates are world-space; the ski-mountain is authored at (cx, cz).
+ * Coordinates are world-space; the ski-mountain is authored at (cx, cz). The
+ * world loops, so the mountain (and its summit) recurs every period — the height
+ * is computed against the nearest periodic image so you stay on whichever summit
+ * you actually rode up, not teleported to the original.
  */
+import { wrapDelta } from './wrap';
+
 export const SUMMIT_CX = -22;
 export const SUMMIT_CZ = -56;
 export const SUMMIT_RADIUS = 14; // drivable radius on top
@@ -17,8 +22,8 @@ export const SUMMIT_DOME = 2.6; // extra height at the centre (gentle crown)
  * uneven peak rather than a flat disc.
  */
 export function summitHeight(x: number, z: number): number | null {
-  const dx = x - SUMMIT_CX;
-  const dz = z - SUMMIT_CZ;
+  const dx = wrapDelta(x, SUMMIT_CX); // nearest periodic image of the summit
+  const dz = wrapDelta(z, SUMMIT_CZ);
   const d2 = dx * dx + dz * dz;
   const r2 = SUMMIT_RADIUS * SUMMIT_RADIUS;
   if (d2 > r2) return null;
