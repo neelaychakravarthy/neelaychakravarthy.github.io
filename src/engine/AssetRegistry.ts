@@ -1413,6 +1413,258 @@ export class AssetRegistry {
       g.add(pts);
       return g;
     },
+
+    // ---------- racetrack (hub) ----------
+    // A windy Mario-Kart-style circuit: a smooth closed spline through waypoints,
+    // built as an asphalt ribbon with kerbs, dashed centre line, red/white side
+    // barriers (instanced) with two drive-in openings, a chequered start/finish
+    // under a flag gantry, and tyre-stacks. It emits the data the engine needs via
+    // userData: barrier colliders, boost strips, and lap checkpoints + finish.
+    racetrack: () => {
+      const g = new THREE.Group();
+      const HW = 3.6; // half track width
+      // closed windy centre-line (local; the track sits at world (0,0,40))
+      const wp: [number, number][] = [
+        [0, -18], [20, -17], [33, -10], [30, 2], [16, 6], [28, 16], [18, 24],
+        [-4, 22], [-24, 24], [-33, 12], [-20, 6], [-34, -4], [-28, -14], [-12, -16],
+      ];
+      const curve = new THREE.CatmullRomCurve3(wp.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'catmullrom', 0.5);
+      const N = 240;
+      const samples = Array.from({ length: N }, (_, i) => {
+        const u = i / N;
+        const p = curve.getPointAt(u);
+        const t = curve.getTangentAt(u);
+        const left = new THREE.Vector3(-t.z, 0, t.x).setLength(HW); // perpendicular
+        return { u, p, t, left };
+      });
+
+      // asphalt ribbon
+      const pos: number[] = [];
+      const idx: number[] = [];
+      for (const s of samples) {
+        const l = s.p.clone().add(s.left);
+        const r = s.p.clone().sub(s.left);
+        pos.push(l.x, 0.05, l.z, r.x, 0.05, r.z);
+      }
+      for (let i = 0; i < N; i++) {
+        const a = 2 * i, b = 2 * i + 1, c = (2 * ((i + 1) % N)), d = c + 1;
+        idx.push(a, c, b, b, c, d);
+      }
+      const tgeo = new THREE.BufferGeometry();
+      tgeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      tgeo.setIndex(idx);
+      tgeo.computeVertexNormals();
+      const track = mesh(tgeo, std('#34373e', { roughness: 0.96, side: THREE.DoubleSide }), false);
+      track.receiveShadow = true;
+      g.add(track);
+
+      // dashed centre line + red/white kerbs along both edges
+      const dashMat = std('#e8ecf0', { roughness: 0.7 });
+      for (let i = 0; i < N; i += 5) {
+        const s = samples[i];
+        const dash = mesh(new THREE.BoxGeometry(0.9, 0.03, 0.2), dashMat, false);
+        dash.position.set(s.p.x, 0.12, s.p.z);
+        dash.rotation.y = Math.atan2(s.t.x, s.t.z);
+        g.add(dash);
+      }
+      const kerbGeo = new THREE.BoxGeometry(1.0, 0.08, 0.55);
+      const kerbMesh = new THREE.InstancedMesh(kerbGeo, std('#ffffff', { roughness: 0.7 }), N * 2);
+      const km = new THREE.Object3D();
+      const kc = new THREE.Color();
+      let ki = 0;
+      for (let i = 0; i < N; i++) {
+        const s = samples[i];
+        for (const side of [1, -1] as const) {
+          const e = s.p.clone().add(s.left.clone().multiplyScalar(side * 0.94));
+          km.position.set(e.x, 0.11, e.z);
+          km.rotation.set(0, Math.atan2(s.t.x, s.t.z), 0);
+          km.updateMatrix();
+          kerbMesh.setMatrixAt(ki, km.matrix);
+          kerbMesh.setColorAt(ki, kc.set(i % 2 ? '#d83a3a' : '#f2f2f2'));
+          ki++;
+        }
+      }
+      kerbMesh.instanceMatrix.needsUpdate = true;
+      g.add(kerbMesh);
+
+      // red/white side barriers (instanced), with two drive-in openings; collect
+      // a collider per post so the car bounces off the walls (openings stay clear)
+      const colliders: { dx: number; dz: number; radius: number }[] = [];
+      const openings = [0.9, 0.42]; // u-centres of the two gaps
+      const isOpen = (u: number) => openings.some((o) => Math.abs(((u - o + 0.5 + 1) % 1) - 0.5) < 0.035);
+      const barrierGeo = new THREE.BoxGeometry(1.3, 0.9, 0.5);
+      const posts: { x: number; z: number; yaw: number; red: boolean }[] = [];
+      for (let i = 0; i < N; i += 4) {
+        const s = samples[i];
+        if (isOpen(s.u)) continue;
+        for (const side of [1, -1] as const) {
+          const b = s.p.clone().add(s.left.clone().setLength(HW + 0.55).multiplyScalar(side));
+          posts.push({ x: b.x, z: b.z, yaw: Math.atan2(s.t.x, s.t.z), red: i % 8 < 4 });
+          colliders.push({ dx: b.x, dz: b.z, radius: 1.0 });
+        }
+      }
+      const barrierMesh = new THREE.InstancedMesh(barrierGeo, std('#ffffff', { roughness: 0.75 }), posts.length);
+      const bm = new THREE.Object3D();
+      posts.forEach((p, i) => {
+        bm.position.set(p.x, 0.45, p.z);
+        bm.rotation.set(0, p.yaw, 0);
+        bm.updateMatrix();
+        barrierMesh.setMatrixAt(i, bm.matrix);
+        barrierMesh.setColorAt(i, kc.set(p.red ? '#d83a3a' : '#f2f2f2'));
+      });
+      barrierMesh.instanceMatrix.needsUpdate = true;
+      barrierMesh.castShadow = true;
+      g.add(barrierMesh);
+      g.userData.colliders = colliders;
+
+      // boost strips on the straighter stretches (arrow visual + emitted data)
+      const boostArrow = () => {
+        const a = new THREE.Group();
+        const pad = mesh(new THREE.BoxGeometry(2.6, 0.04, 4.6), std('#16181e', { roughness: 0.85, emissive: '#3a2e00', emissiveIntensity: 0.2 }), false);
+        pad.position.y = 0.085;
+        a.add(pad);
+        for (let i = 0; i < 3; i++)
+          for (const sx of [-1, 1]) {
+            const bar = mesh(new THREE.BoxGeometry(1.5, 0.06, 0.4), std('#ffce3a', { emissive: '#ffce3a', emissiveIntensity: 1.0, roughness: 0.4 }), false);
+            bar.position.set(sx * 0.55, 0.12, -1.3 + i * 1.3);
+            bar.rotation.y = sx * 0.7;
+            a.add(bar);
+          }
+        return a;
+      };
+      const boosts: { x: number; z: number; yaw: number; strength: number; radius: number; duration: number }[] = [];
+      for (const u of [0.06, 0.3, 0.58, 0.82]) {
+        const s = samples[Math.round(u * N) % N];
+        const yaw = Math.atan2(s.t.x, s.t.z);
+        const arrow = boostArrow();
+        arrow.position.set(s.p.x, 0, s.p.z);
+        arrow.rotation.y = yaw;
+        g.add(arrow);
+        boosts.push({ x: s.p.x, z: s.p.z, yaw, strength: 26, radius: 3.4, duration: 1.0 });
+      }
+      g.userData.boosts = boosts;
+
+      // start/finish: chequered band across the track + a flag gantry overhead
+      const f = samples[0];
+      const fyaw = Math.atan2(f.t.x, f.t.z);
+      const finishLine = new THREE.Group();
+      for (let c = 0; c < 8; c++)
+        for (let r = 0; r < 2; r++) {
+          const col = (c + r) % 2 ? '#f4f4f4' : '#141414';
+          const sq = mesh(new THREE.BoxGeometry(0.85, 0.04, (HW * 2) / 8 + 0.02), std(col, { roughness: 0.7 }), false);
+          sq.position.set(-0.42 + r * 0.85, 0.12, -HW + (c + 0.5) * ((HW * 2) / 8));
+          finishLine.add(sq);
+        }
+      // flag gantry
+      const gMat = std('#cdd3da', { metalness: 0.3, roughness: 0.5 });
+      for (const sx of [-1, 1]) {
+        const post = mesh(new THREE.CylinderGeometry(0.16, 0.2, 5, 8), gMat);
+        post.position.set(0, 2.5, sx * (HW + 0.6));
+        finishLine.add(post);
+      }
+      const beam = mesh(new THREE.BoxGeometry(0.4, 0.5, HW * 2 + 1.6), gMat);
+      beam.position.set(0, 5, 0);
+      finishLine.add(beam);
+      for (let c = 0; c < 9; c++)
+        for (let r = 0; r < 2; r++) {
+          const col = (c + r) % 2 ? '#f4f4f4' : '#141414';
+          const sq = mesh(new THREE.BoxGeometry(0.06, 0.42, (HW * 2 + 1.4) / 9), std(col, { roughness: 0.6 }), false);
+          sq.position.set(0, 4.55 - r * 0.42, -(HW + 0.7) + (c + 0.5) * ((HW * 2 + 1.4) / 9));
+          finishLine.add(sq);
+        }
+      // little flags on top
+      for (const sx of [-1, 1]) {
+        const flag = mesh(new THREE.BoxGeometry(0.06, 0.7, 1.0), std(sx < 0 ? '#d83a3a' : '#161616', { roughness: 0.6 }), false);
+        flag.position.set(0, 5.55, sx * (HW + 0.2));
+        finishLine.add(flag);
+      }
+      finishLine.position.set(f.p.x, 0, f.p.z);
+      finishLine.rotation.y = fyaw;
+      g.add(finishLine);
+
+      // tyre-stacks at a few apexes (outside the barrier)
+      const tyreMat = std('#1b1d22', { roughness: 0.9 });
+      for (const u of [0.16, 0.5, 0.74]) {
+        const s = samples[Math.round(u * N) % N];
+        const o = s.p.clone().add(s.left.clone().setLength(HW + 1.8));
+        const stack = new THREE.Group();
+        for (let k = 0; k < 3; k++) {
+          const tyre = mesh(new THREE.TorusGeometry(0.5, 0.26, 8, 12), tyreMat);
+          tyre.rotation.x = Math.PI / 2;
+          tyre.position.y = 0.28 + k * 0.42;
+          stack.add(tyre);
+        }
+        stack.position.set(o.x, 0, o.z);
+        g.add(stack);
+      }
+
+      // lap checkpoints (must be passed in order before the finish counts)
+      const cps = [0.0, 0.2, 0.4, 0.6, 0.8].map((u) => {
+        const p = curve.getPointAt(u);
+        return { x: p.x, z: p.z };
+      });
+      g.userData.checkpoints = cps;
+      return g;
+    },
+    // A grandstand packed with a stylized crowd — the "hundreds of fans" trick is
+    // one InstancedMesh of tiny coloured capsules across tiered steps (cheap, but
+    // reads as a dense crowd). Front (crowd faces +z) toward the track; rotate to aim.
+    grandstand: () => {
+      const g = new THREE.Group();
+      const W = 17;
+      const rows = 6;
+      const rowD = 1.0;
+      const rowH = 0.55;
+      const struct = std('#737b85', { roughness: 0.85 });
+      const frame = std('#586069', { roughness: 0.8 });
+      // tiered steps
+      for (let r = 0; r < rows; r++) {
+        const step = mesh(new THREE.BoxGeometry(W, rowH, rowD + 0.05), struct);
+        step.position.set(0, rowH / 2 + r * rowH, -r * rowD);
+        step.receiveShadow = true;
+        g.add(step);
+      }
+      // side cheeks + a roof slab
+      for (const sx of [-1, 1]) {
+        const cheek = mesh(new THREE.BoxGeometry(0.5, rows * rowH + 0.5, rows * rowD), frame);
+        cheek.position.set((sx * W) / 2, (rows * rowH) / 2, (-(rows - 1) * rowD) / 2);
+        g.add(cheek);
+      }
+      const roof = mesh(new THREE.BoxGeometry(W + 1, 0.3, 2.6), frame);
+      roof.position.set(0, rows * rowH + 1.6, -(rows - 1) * rowD - 0.5);
+      for (const sx of [-1, 1]) {
+        const post = mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.8, 6), frame);
+        post.position.set((sx * (W - 1)) / 2, rows * rowH + 0.7, -(rows - 1) * rowD - 0.5);
+        g.add(post);
+      }
+      g.add(roof);
+      // the crowd — one instanced mesh of little coloured people
+      const palette = ['#e8533d', '#ffd23f', '#5ad1ff', '#7dffd6', '#ff8ac0', '#f4f4f4', '#3aa655', '#b06fff', '#ff7a1f', '#4f86c6'];
+      const perRow = 34;
+      const count = rows * perRow;
+      const crowd = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.17, 0.26, 2, 5), std('#ffffff', { roughness: 0.6 }), count);
+      crowd.castShadow = false;
+      const o = new THREE.Object3D();
+      const col = new THREE.Color();
+      let i = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < perRow; c++) {
+          o.position.set(
+            -W / 2 + 0.5 + (c * (W - 1)) / (perRow - 1) + (Math.random() - 0.5) * 0.22,
+            rowH + r * rowH + 0.36,
+            -r * rowD + 0.28 + (Math.random() - 0.5) * 0.15,
+          );
+          o.scale.setScalar(0.85 + Math.random() * 0.4);
+          o.updateMatrix();
+          crowd.setMatrixAt(i, o.matrix);
+          crowd.setColorAt(i, col.set(palette[(Math.random() * palette.length) | 0]));
+          i++;
+        }
+      }
+      crowd.instanceMatrix.needsUpdate = true;
+      g.add(crowd);
+      return g;
+    },
   };
 
   create(modelId: string, seed = 0): THREE.Object3D {

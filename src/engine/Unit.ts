@@ -62,6 +62,9 @@ export class Unit {
   private velocity = 0;
   private prevX = 0;
   private prevZ = 0;
+  private boostTimer = 0;
+  private boostYaw = 0;
+  private boostSpeed = 0;
   private readonly wheels: THREE.Mesh[] = [];
 
   private readonly toTarget = new THREE.Vector3();
@@ -121,6 +124,15 @@ export class Unit {
   stop() {
     this.target = null;
     this.velocity = 0;
+    this.boostTimer = 0;
+  }
+
+  /** Fire a directional speed boost (a track boost-strip): the car snaps toward
+   *  `yaw` and is flung forward at `speed` for `duration` seconds. */
+  boost(yaw: number, speed: number, duration: number) {
+    this.boostYaw = yaw;
+    this.boostSpeed = speed;
+    this.boostTimer = Math.max(this.boostTimer, duration);
   }
 
   update(dt: number) {
@@ -128,6 +140,22 @@ export class Unit {
     this.prevZ = this.position.z;
     const yaw = this.object.rotation.y;
     this.forward.set(Math.sin(yaw), 0, Math.cos(yaw));
+
+    // Boost strip: override steering — turn toward the boost heading and surge
+    // forward, then hand back to normal driving (the speed bleeds off naturally).
+    if (this.boostTimer > 0) {
+      this.boostTimer -= dt;
+      const by = rotateToward(yaw, this.boostYaw, this.turnRate * 3 * dt);
+      this.object.rotation.y = by;
+      this.forward.set(Math.sin(by), 0, Math.cos(by));
+      this.velocity = approach(this.velocity, this.boostSpeed, this.accel * 6 * dt);
+      this.position.addScaledVector(this.forward, this.velocity * dt);
+      const spin = (this.velocity * dt) / this.wheelRadius;
+      for (const w of this.wheels) w.rotation.x += spin;
+      if (this.colliders.length || this.river) this.resolveCollisions();
+      this.applySurface(dt);
+      return;
+    }
 
     let targetSpeed = 0;
 

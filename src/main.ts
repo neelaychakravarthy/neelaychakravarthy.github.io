@@ -19,10 +19,11 @@ import { BiomeManager, type PadInstance } from './engine/Biome';
 import { TransitionController } from './engine/TransitionController';
 import { InteractionManager } from './engine/InteractionManager';
 import { LiftController } from './engine/LiftController';
+import { LapController } from './engine/LapController';
 import { summitHeight, SUMMIT_BASE_Y } from './engine/summit';
 import { loadWorld } from './engine/WorldLoader';
 import { AudioManager } from './engine/AudioManager';
-import { WORLD_PERIOD, setWorldPeriod, wrapDelta } from './engine/wrap';
+import { WORLD_PERIOD, setWorldPeriod, wrapDelta, wrapDistXZ } from './engine/wrap';
 import { initQuality, detectMobile } from './engine/quality';
 import type { SpawnConfig } from './world/types';
 
@@ -135,6 +136,8 @@ async function boot() {
   const transition = new TransitionController();
   const interaction = new InteractionManager();
   interaction.setBiome(start.pads, unit.position);
+  const lap = new LapController();
+  lap.setBiome(start.checkpoints, unit.position);
 
   window.addEventListener('pagehide', () => engine.dispose(), { once: true });
 
@@ -204,6 +207,7 @@ async function boot() {
         biomes.dispose(from);
         biomes.current = to;
         interaction.setBiome(to.pads, unit.position);
+        lap.setBiome(to.checkpoints, unit.position);
         minimap.setBiome(to.pads);
         focus.setBiome(to.focusables);
         unit.colliders = to.colliders;
@@ -407,7 +411,23 @@ async function boot() {
     if (!locked && !lift.carrying) {
       unit.update(dt);
       // tour + lift drive morphs explicitly, so suppress the proximity trigger then
-      if (!tourActive && !liftActive) interaction.update(unit.position, onPadEnter);
+      if (!tourActive && !liftActive) {
+        interaction.update(unit.position, onPadEnter);
+        // racetrack boost strips: fling the car along the arrows on entry
+        const boosts = biomes.current?.boosts;
+        if (boosts) {
+          for (const b of boosts) {
+            const inside = wrapDistXZ(unit.position.x, unit.position.z, b.position.x, b.position.z) < b.radius;
+            if (inside && !b.wasInside) unit.boost(b.yaw, b.strength, b.duration);
+            b.wasInside = inside;
+          }
+        }
+        // racetrack lap → confetti over the start/finish
+        lap.update(unit.position, () => {
+          const f = biomes.current?.checkpoints[0];
+          if (f) fx.confetti(f);
+        });
+      }
     }
     // Seamless toroidal world: draw content at its nearest image to the unit and
     // recentre the ground/sky/sun on the unit, so every direction loops back.
