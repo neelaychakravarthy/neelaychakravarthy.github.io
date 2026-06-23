@@ -306,10 +306,34 @@ async function boot() {
   }
   updateTourButton();
 
+  /** Enter free-roam (shared by the start button and deep-links). */
+  function enterFreeRoam() {
+    audio.unlock();
+    hideLoader();
+    showHint();
+    entered = true;
+    updateTourButton();
+  }
+
+  /** A `?biome=<id>` query (used by the document-style portfolio's "Open in 3D"
+   *  links) jumps straight into that room, skipping the start screen. */
+  function deepLinkBiome(): string | null {
+    const id = new URLSearchParams(window.location.search).get('biome');
+    return id && world.biomes.some((b) => b.id === id) ? id : null;
+  }
+
   function showStartScreen() {
     const action = document.getElementById('loader-action');
     const tip = document.getElementById('loader-tip');
     if (tip) tip.textContent = 'an explorable 3D portfolio';
+
+    const deep = deepLinkBiome();
+    if (deep) {
+      enterFreeRoam();
+      if (deep !== biomes.current?.id) triggerMorph(deep, { snap: true });
+      return;
+    }
+
     if (!action) {
       hideLoader();
       return;
@@ -333,13 +357,10 @@ async function boot() {
         tour.start(); // setTourActive(true) keeps the floating button hidden
       }),
     );
+    row.appendChild(mk('Free roam', false, enterFreeRoam));
     row.appendChild(
-      mk('Free roam', false, () => {
-        audio.unlock();
-        hideLoader();
-        showHint();
-        entered = true;
-        updateTourButton();
+      mk('View portfolio', false, () => {
+        window.location.href = '/portfolio.html';
       }),
     );
     action.appendChild(row);

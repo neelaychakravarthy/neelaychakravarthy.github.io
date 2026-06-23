@@ -5,4 +5,14 @@ import { defineConfig } from 'vite';
 // against an accidental future change that would break absolute /assets paths.
 export default defineConfig({
   base: '/',
+  build: {
+    rollupOptions: {
+      // Two entry pages: the explorable 3D world (index) and the document-style
+      // portfolio (portfolio.html). Both are served from the domain root.
+      input: {
+        main: 'index.html',
+        portfolio: 'portfolio.html',
+      },
+    },
+  },
 });
