@@ -22,7 +22,7 @@
         "groundColor": "#8bb06a"
       },
       "audio": { "music": "warm-major", "ambientRoot": 261.63, "ambientGain": 0.45 },
-      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70, "grassClear": [[0, -2, 7.2], [25, 7, 7.6, 4.6, -0.5], [37, 0, 5.7, 25], [-37, 0, 5.7, 25], [-22, -56, 20], [-5, -49, 13]] },
+      "atmosphere": { "grass": 1.0, "grassColor": "#7cb86a", "clouds": 6, "birds": 3, "particles": "pollen", "particleColor": "#fff0c0", "particleCount": 70, "grassClear": [[0, -2, 7.2], [25, 7, 7.6, 4.6, -0.5], [37, 0, 5.7, 25], [-37, 0, 5.7, 25], [-22, -56, 28]] },
       "river": { "centerZ": 0, "halfZ": 25, "bridgeHalf": 42 },
       "spawn": { "position": [0, 0, 12], "rotationY": 3.14159 },
       "structures": [
@@ -39,7 +39,18 @@
         { "modelId": "river", "position": [0, 0, 0] },
         { "modelId": "beach", "position": [37, 0, 0] },
         { "modelId": "beach", "position": [-37, 0, 0], "rotationY": 3.14159 },
-        { "modelId": "ski-mountain", "position": [-22, 0, -56], "colliders": [{ "dx": 0, "dz": 0, "radius": 20 }, { "dx": 17, "dz": 7, "radius": 13 }] },
+        { "modelId": "ski-mountain", "position": [-22, 0, -56], "colliders": [{ "dx": 0, "dz": 0, "radius": 27 }] },
+        { "modelId": "snow-fall", "position": [-22, 24, -56] },
+        { "modelId": "snowman", "position": [-19, 26.55, -52], "rotationY": 2.4 },
+        { "modelId": "snow-pine", "position": [-30, 25.97, -58] },
+        { "modelId": "snow-pine", "position": [-13, 25.05, -60] },
+        { "modelId": "snow-pine", "position": [-26, 24.58, -46] },
+        { "modelId": "crossed-skis", "position": [-23, 25.59, -50], "rotationY": 0.5 },
+        { "modelId": "crossed-skis", "position": [-16, 26.79, -56], "rotationY": -0.6 },
+        { "modelId": "trail-sign", "position": [-28, 25.82, -53], "rotationY": 0.6 },
+        { "modelId": "trail-sign", "position": [-15, 25.03, -49], "rotationY": -0.5 },
+        { "modelId": "snow-mound", "position": [-29, 24.98, -62] },
+        { "modelId": "snow-mound", "position": [-14, 25.7, -53] },
         { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 },
         { "modelId": "wordle-board", "position": [30, 0, -9.5], "scale": 0.5 },
         { "modelId": "gallery-wall", "position": [-30, 0, -9.5], "scale": 0.5 }
@@ -68,7 +79,35 @@
         { "id": "to-university", "position": [-5, 0, -8], "target": "classroom", "label": "University   ↑", "color": "#d8b24a", "radius": 2.6 },
         { "id": "to-chakra", "position": [5, 0, -8], "target": "chakra", "label": "Chakra   ↗", "color": "#ff7a1f", "radius": 2.5 },
         { "id": "to-wordle", "position": [30, 0, -5], "target": "wordle", "label": "Wordle   ↗", "color": "#6aaa64", "radius": 2.5 },
-        { "id": "to-imagedup", "position": [-30, 0, -5], "target": "imagedup", "label": "Image Finder   ↖", "color": "#3fd0e0", "radius": 2.5 }
+        { "id": "to-imagedup", "position": [-30, 0, -5], "target": "imagedup", "label": "Image Finder   ↖", "color": "#3fd0e0", "radius": 2.5 },
+        {
+          "id": "lift-up",
+          "position": [-22, 0, -26],
+          "target": "hub",
+          "label": "Ski Lift   ▲",
+          "color": "#bfe6ff",
+          "radius": 2.7,
+          "lift": {
+            "ride": [[-22, 2, -26], [-22, 25, -42]],
+            "toSummit": true,
+            "land": [-22, -50],
+            "duration": 5.0
+          }
+        },
+        {
+          "id": "lift-down",
+          "position": [-19, 24.97, -43],
+          "target": "hub",
+          "label": "Ski Lift   ▼",
+          "color": "#bfe6ff",
+          "radius": 2.7,
+          "lift": {
+            "ride": [[-19, 25, -42], [-19, 2, -26]],
+            "toSummit": false,
+            "land": [-19, -18],
+            "duration": 5.0
+          }
+        }
       ]
     },
     {

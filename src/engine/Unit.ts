@@ -53,9 +53,15 @@ export class Unit {
   colliders: Collider[] = [];
   /** Optional looping river that blocks all but the central land-bridge. */
   river: RiverBlock | null = null;
+  /** Optional raised surface (e.g. the mountain summit): returns the drivable
+   *  height at (x,z), or null off its edge (a wall). When set, the car's y follows
+   *  it. Null surface = ordinary flat ground at y = 0. */
+  surface: ((x: number, z: number) => number | null) | null = null;
 
   private target: THREE.Vector3 | null = null;
   private velocity = 0;
+  private prevX = 0;
+  private prevZ = 0;
   private readonly wheels: THREE.Mesh[] = [];
 
   private readonly toTarget = new THREE.Vector3();
@@ -118,6 +124,8 @@ export class Unit {
   }
 
   update(dt: number) {
+    this.prevX = this.position.x;
+    this.prevZ = this.position.z;
     const yaw = this.object.rotation.y;
     this.forward.set(Math.sin(yaw), 0, Math.cos(yaw));
 
@@ -152,6 +160,26 @@ export class Unit {
       for (const w of this.wheels) w.rotation.x += spin;
     }
     if (this.colliders.length || this.river) this.resolveCollisions();
+    this.applySurface(dt);
+  }
+
+  /** Follow a raised surface (the summit dome): set y from its height, and block
+   *  driving off its edge by reverting the move (stops cleanly at the rim). */
+  private applySurface(dt: number) {
+    if (!this.surface) {
+      if (this.position.y !== 0) this.position.y += (0 - this.position.y) * Math.min(1, dt * 12);
+      return;
+    }
+    const h = this.surface(this.position.x, this.position.z);
+    if (h === null) {
+      this.position.x = this.prevX;
+      this.position.z = this.prevZ;
+      this.velocity = 0;
+      const hb = this.surface(this.position.x, this.position.z);
+      if (hb !== null) this.position.y += (hb - this.position.y) * Math.min(1, dt * 12);
+      return;
+    }
+    this.position.y += (h - this.position.y) * Math.min(1, dt * 12);
   }
 
   /** Push the unit out of any obstacle it has entered (slides along the edge,

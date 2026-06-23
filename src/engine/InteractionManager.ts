@@ -22,10 +22,10 @@ export class InteractionManager {
     return wrapDistXZ(pos.x, pos.z, p.position.x, p.position.z) < p.radius;
   }
 
-  update(unitPos: THREE.Vector3, onTrigger: (target: string) => void) {
+  update(unitPos: THREE.Vector3, onTrigger: (pad: PadInstance) => void) {
     for (const p of this.pads) {
       const now = this.inside(p, unitPos);
-      if (now && !p.wasInside) onTrigger(p.target);
+      if (now && !p.wasInside) onTrigger(p);
       p.wasInside = now;
     }
   }

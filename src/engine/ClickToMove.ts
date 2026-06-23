@@ -18,6 +18,10 @@ export interface ClickHandlers {
 export class ClickToMove {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
+  /** When the car is on a raised surface (summit), clicks resolve against this
+   *  horizontal plane instead of the y=0 ground. */
+  private liftPlane: THREE.Plane | null = null;
+  private readonly hitPoint = new THREE.Vector3();
   private readonly marker: THREE.Group;
   private readonly ring: THREE.Mesh;
   private pulse = 0;
@@ -68,12 +72,23 @@ export class ClickToMove {
       }
     }
 
-    const g = this.raycaster.intersectObject(this.ground, false)[0];
-    if (!g) return;
-    this.handlers.onGround(g.point);
-    this.marker.position.set(g.point.x, 0, g.point.z);
+    let point: THREE.Vector3 | undefined;
+    if (this.liftPlane) {
+      point = this.raycaster.ray.intersectPlane(this.liftPlane, this.hitPoint) ?? undefined;
+    } else {
+      point = this.raycaster.intersectObject(this.ground, false)[0]?.point;
+    }
+    if (!point) return;
+    this.handlers.onGround(point);
+    this.marker.position.set(point.x, this.liftPlane ? point.y + 0.04 : 0, point.z);
     this.marker.visible = true;
     this.pulse = 0;
+  }
+
+  /** Resolve clicks against a horizontal plane at world height `y` (the summit),
+   *  or pass null to go back to the ordinary ground. */
+  setGroundPlane(y: number | null) {
+    this.liftPlane = y === null ? null : new THREE.Plane(new THREE.Vector3(0, 1, 0), -y);
   }
 
   private onPointerDown = (e: PointerEvent) => {

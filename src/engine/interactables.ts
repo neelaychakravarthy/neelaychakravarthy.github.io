@@ -365,5 +365,6 @@ export function makePad(p: PadConfig): THREE.Object3D {
   g.userData.padTarget = p.target;
   g.userData.padRadius = r;
   g.userData.glowMat = glowMat;
+  if (p.lift) g.userData.lift = p.lift;
   return g;
 }

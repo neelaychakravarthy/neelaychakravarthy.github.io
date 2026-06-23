@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Text } from 'troika-three-text';
-import type { BiomeConfig, WorldConfig } from '../world/types';
+import type { BiomeConfig, LiftConfig, WorldConfig } from '../world/types';
 import type { AssetRegistry } from './AssetRegistry';
 import { EnvironmentController } from './EnvironmentController';
 import { makeContent, makePad } from './interactables';
@@ -27,6 +27,8 @@ export interface PadInstance {
   glow?: THREE.MeshStandardMaterial;
   pulse: number;
   wasInside: boolean;
+  /** Present on ski-lift pads — rolling on carries the car instead of morphing. */
+  lift?: LiftConfig;
 }
 
 export interface BuiltBiome {
@@ -136,6 +138,7 @@ function buildBiome(
         glow: obj.userData.glowMat as THREE.MeshStandardMaterial | undefined,
         pulse: 0,
         wasInside: false,
+        lift: obj.userData.lift as LiftConfig | undefined,
       });
     }
   }
@@ -312,18 +315,7 @@ export class BiomeManager {
       const shader = mat.userData.shader as { uniforms: { uTime: { value: number } } } | undefined;
       if (shader) shader.uniforms.uTime.value = this.elapsed;
     }
-    for (const o of b.skiLifts) {
-      const L = o.userData.skiLift as {
-        ftBottom: THREE.Vector3; ftTop: THREE.Vector3; bkBottom: THREE.Vector3; bkTop: THREE.Vector3;
-        chairs: THREE.Group[]; speed: number;
-      };
-      const n = L.chairs.length;
-      for (let i = 0; i < n; i++) {
-        const ph = (i / n + this.elapsed * L.speed) % 1; // 0..1 around the loop
-        if (ph < 0.5) L.chairs[i].position.lerpVectors(L.ftBottom, L.ftTop, ph * 2); // up the front
-        else L.chairs[i].position.lerpVectors(L.bkTop, L.bkBottom, (ph - 0.5) * 2); // down the back
-      }
-    }
+    // (ski-lift chairs are circulated by LiftController so the car can ride them)
     // conveyor belts: items ride from one end to the other and loop back (a
     // production line — materials in, product out).
     for (const o of b.conveyors) {

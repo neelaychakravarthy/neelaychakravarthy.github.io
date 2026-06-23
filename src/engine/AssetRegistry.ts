@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { WORLD_PERIOD } from './wrap';
+import { SUMMIT_BASE_Y, SUMMIT_DOME, SUMMIT_RADIUS } from './summit';
 
 /** Half-width (x) of the central grass land-bridge; the river is the gap beyond it. */
 export const BRIDGE_HALF = 42;
@@ -669,54 +670,146 @@ export class AssetRegistry {
       g.add(water);
       return g;
     },
+    // A big mountain whose flat-ish top is a DRIVABLE snow dome (the summit lives
+    // in the hub — no biome switch). A continuous chair-lift loops up the south
+    // face and around bullwheels at both terminals; the car boards, a chair brings
+    // it up, and it drives off onto the dome. Geometry is local; the mountain is
+    // authored at (-22, 0, -56). See summit.ts for the drivable surface.
     'ski-mountain': () => {
       const g = new THREE.Group();
       const rockMat = std('#8a94a0', { roughness: 1 });
-      const snowMat = std('#f2f7ff', { roughness: 0.85 });
-      const m1 = mesh(new THREE.ConeGeometry(20, 27, 7), rockMat);
-      m1.position.y = 13.5;
-      m1.rotation.y = 0.3;
-      const s1 = mesh(new THREE.ConeGeometry(9.5, 12, 7), snowMat);
-      s1.position.y = 21.5;
-      s1.rotation.y = 0.3;
-      const m2 = mesh(new THREE.ConeGeometry(13, 19, 7), std('#929ca8', { roughness: 1 }));
-      m2.position.set(17, 9.5, 7);
-      m2.rotation.y = 0.8;
-      const s2 = mesh(new THREE.ConeGeometry(6, 8, 7), snowMat);
-      s2.position.set(17, 15.5, 7);
-      s2.rotation.y = 0.8;
-      g.add(m1, s1, m2, s2);
-      // ski lift up the front slope — chairs loop up the front cable and down
-      // the back one (animated each frame via userData.skiLift).
-      const liftMat = std('#3a3f48');
-      const bottom = new THREE.Vector3(-3, 1.2, 19);
-      const top = new THREE.Vector3(0, 18, 4);
-      for (let i = 1; i < 5; i++) {
-        const p = bottom.clone().lerp(top, i / 5);
-        const tower = mesh(new THREE.CylinderGeometry(0.18, 0.24, 2.6, 6), liftMat);
-        tower.position.set(p.x, p.y + 0.3, p.z);
-        g.add(tower);
+      const rockDk = std('#7c8590', { roughness: 1 });
+      const snowMat = std('#eef4fb', { roughness: 0.9 });
+      // truncated cone (frustum): wide base, broad flat top to carry the summit
+      const body = mesh(new THREE.CylinderGeometry(15, 27, 24, 12), rockMat);
+      body.position.y = 12;
+      const skirt = mesh(new THREE.CylinderGeometry(20, 30, 9, 12), rockDk);
+      skirt.position.y = 4.5;
+      const snowSkirt = mesh(new THREE.CylinderGeometry(15.4, 19, 8, 12), snowMat);
+      snowSkirt.position.y = 20;
+      g.add(skirt, body, snowSkirt);
+
+      // the drivable snow dome on top (a gentle bumpy crown, radius 15 to overhang
+      // the rim so the car never sees the mesh edge). Matches summit.ts.
+      {
+        const R = 15;
+        const rings = 5;
+        const segs = 30;
+        const r2 = SUMMIT_RADIUS * SUMMIT_RADIUS;
+        const hAt = (x: number, z: number) =>
+          SUMMIT_BASE_Y + SUMMIT_DOME * (1 - Math.min(1, (x * x + z * z) / r2)) + Math.sin(x * 0.4) * 0.4 + Math.cos(z * 0.45) * 0.4;
+        const verts: number[] = [0, hAt(0, 0), 0];
+        for (let ring = 1; ring <= rings; ring++) {
+          const r = (R * ring) / rings;
+          for (let s = 0; s < segs; s++) {
+            const a = (s / segs) * Math.PI * 2;
+            const x = Math.cos(a) * r;
+            const z = Math.sin(a) * r;
+            verts.push(x, hAt(x, z), z);
+          }
+        }
+        const idx: number[] = [];
+        for (let s = 0; s < segs; s++) idx.push(0, 1 + ((s + 1) % segs), 1 + s);
+        for (let ring = 1; ring < rings; ring++) {
+          const a0 = 1 + (ring - 1) * segs;
+          const b0 = 1 + ring * segs;
+          for (let s = 0; s < segs; s++) {
+            const a = a0 + s;
+            const b = a0 + ((s + 1) % segs);
+            const c = b0 + s;
+            const d = b0 + ((s + 1) % segs);
+            idx.push(a, d, c, a, b, d);
+          }
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        geo.setIndex(idx);
+        geo.computeVertexNormals();
+        const dome = mesh(geo, std('#eef4fb', { roughness: 0.92, side: THREE.DoubleSide }));
+        dome.receiveShadow = true;
+        g.add(dome);
       }
+
+      // a sharp secondary peak at the back rim, for a proper summit silhouette
+      const peak = mesh(new THREE.ConeGeometry(6, 16, 7), rockDk);
+      peak.position.set(2, SUMMIT_BASE_Y + 7, -11);
+      const peakSnow = mesh(new THREE.ConeGeometry(3.2, 7, 7), snowMat);
+      peakSnow.position.set(2, SUMMIT_BASE_Y + 12, -11);
+      g.add(peak, peakSnow);
+
+      // ---- the chair-lift, a continuous conveyor loop up the south face ----
+      const liftMat = std('#3a3f48', { metalness: 0.3 });
       const cableMat = std('#23272e');
-      const back = new THREE.Vector3(0, 0, 1.5); // parallel return cable
-      const ftBottom = bottom.clone().setY(bottom.y + 1.3);
-      const ftTop = top.clone().setY(top.y + 1.3);
-      const bkBottom = ftBottom.clone().add(back);
-      const bkTop = ftTop.clone().add(back);
-      g.add(connect(ftBottom, ftTop, 0.04, cableMat));
-      g.add(connect(bkBottom, bkTop, 0.04, cableMat));
+      const seatMat = std('#e0a93f');
+      // closed loop (local): up the front cable, around the top wheel, down the
+      // back cable, around the base wheel. Endpoints match world.json lift.ride.
+      const loop = new THREE.CatmullRomCurve3(
+        [
+          new THREE.Vector3(0, 2, 30), // base, foot of the up-cable
+          new THREE.Vector3(0, 25, 14), // top of the up-cable (summit front rim)
+          new THREE.Vector3(1.5, 26.5, 13), // over the top bullwheel
+          new THREE.Vector3(3, 25, 14), // top of the down-cable
+          new THREE.Vector3(3, 2, 30), // base of the down-cable
+          new THREE.Vector3(1.5, 1, 31), // around the base bullwheel
+        ],
+        true,
+        'catmullrom',
+        0.5,
+      );
+
+      // terminals (platform + A-frame + spinning bullwheel) at base and top
+      const terminal = (x: number, y: number, z: number, s: number) => {
+        const t = new THREE.Group();
+        const plat = mesh(new THREE.BoxGeometry(3.4 * s, 0.7, 3.0 * s), std('#5a6068'));
+        plat.position.y = 0.35;
+        plat.receiveShadow = true;
+        t.add(plat);
+        for (const sx of [-1, 1]) {
+          const post = mesh(new THREE.CylinderGeometry(0.2 * s, 0.26 * s, 3.6 * s, 6), liftMat);
+          post.position.set(sx * 1.4 * s, 2.0 * s, 0);
+          t.add(post);
+        }
+        const wheel = mesh(new THREE.CylinderGeometry(1.4 * s, 1.4 * s, 0.34 * s, 18), std('#c0c6cf', { metalness: 0.4 }));
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(1.5 * s, 3.7 * s, 0);
+        wheel.userData.spinSpeed = 0.9;
+        wheel.userData.spinAxis = 'x';
+        t.add(wheel);
+        t.position.set(x, y, z);
+        return t;
+      };
+      g.add(terminal(0, 0, 30.5, 1.0)); // base terminal
+      g.add(terminal(0, 24, 13.5, 0.9)); // top terminal (on the summit rim)
+
+      // towers up the slope (between the cable lines)
+      for (let i = 1; i < 6; i++) {
+        const p = loop.getPoint(i / 12); // along the up-cable portion
+        const tower = mesh(new THREE.CylinderGeometry(0.22, 0.32, 3.4, 6), liftMat);
+        tower.position.set(1.5, p.y - 1.0, p.z);
+        const arm = mesh(new THREE.BoxGeometry(4.0, 0.2, 0.2), liftMat);
+        arm.position.set(1.5, p.y + 0.7, p.z);
+        g.add(tower, arm);
+      }
+
+      // the two cables, drawn from the loop's straight segments
+      g.add(connect(loop.getPoint(0), loop.getPoint(1 / 6), 0.07, cableMat));
+      g.add(connect(loop.getPoint(3 / 6), loop.getPoint(4 / 6), 0.07, cableMat));
+
+      // evenly-spaced chairs; the LiftController moves them around the loop
       const chairs: THREE.Group[] = [];
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 12; i++) {
         const c = new THREE.Group();
-        const hanger = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), liftMat, false);
-        hanger.position.y = -0.2;
-        const seat = mesh(new THREE.BoxGeometry(0.5, 0.1, 0.35), std('#e0a93f'), false);
-        seat.position.y = -0.45;
-        c.add(hanger, seat);
+        const hanger = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 5), liftMat, false);
+        hanger.position.y = -0.35;
+        const seat = mesh(new THREE.BoxGeometry(0.9, 0.14, 0.6), seatMat, false);
+        seat.position.y = -0.78;
+        const backrest = mesh(new THREE.BoxGeometry(0.9, 0.5, 0.1), seatMat, false);
+        backrest.position.set(0, -0.52, -0.28);
+        c.add(hanger, seat, backrest);
         g.add(c);
         chairs.push(c);
       }
-      g.userData.skiLift = { ftBottom, ftTop, bkBottom, bkTop, chairs, speed: 0.05 };
+      g.userData.skiLift = { loop, chairs, speed: 0.05, hang: 0.78 };
       return g;
     },
 
@@ -1106,6 +1199,217 @@ export class AssetRegistry {
         }
         for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) g.add(connect(pts[i], pts[j], 0.025, edgeMat));
       }
+      return g;
+    },
+
+    // ---------- mountain summit (snowy plateau reached by the ski lift) ----------
+    // The summit lift station: where you board to ride back down. A platform with
+    // an A-frame and a spinning bullwheel, plus a stub of cable heading off-edge.
+    'lift-terminal': () => {
+      const g = new THREE.Group();
+      const liftMat = std('#3a3f48', { metalness: 0.3 });
+      const plat = mesh(new THREE.BoxGeometry(3.4, 0.7, 3.4), std('#6a727c'));
+      plat.position.y = 0.35;
+      plat.receiveShadow = true;
+      g.add(plat);
+      for (const sx of [-1, 1]) {
+        const post = mesh(new THREE.CylinderGeometry(0.2, 0.26, 4.0, 6), liftMat);
+        post.position.set(sx * 1.1, 2.3, 0);
+        post.rotation.x = -0.18; // lean toward the down-slope
+        g.add(post);
+      }
+      const wheel = mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.32, 16), std('#c0c6cf', { metalness: 0.4 }));
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(0, 4.0, -0.4);
+      wheel.userData.spinSpeed = 0.8;
+      wheel.userData.spinAxis = 'x';
+      g.add(wheel);
+      // a short cable + a couple of chairs heading off the back edge (down the hill)
+      const cableMat = std('#23272e');
+      const a = new THREE.Vector3(0, 4.0, -0.4);
+      const b = new THREE.Vector3(0.4, 6.5, -5.5);
+      g.add(connect(a, b, 0.06, cableMat));
+      for (let i = 0; i < 2; i++) {
+        const p = a.clone().lerp(b, 0.35 + i * 0.4);
+        const seat = mesh(new THREE.BoxGeometry(0.85, 0.14, 0.55), std('#e0a93f'), false);
+        seat.position.set(p.x, p.y - 0.75, p.z);
+        const hang = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 5), liftMat, false);
+        hang.position.set(p.x, p.y - 0.35, p.z);
+        g.add(seat, hang);
+      }
+      return g;
+    },
+    // Ski-trail marker sign: a post with the classic difficulty badges
+    // (green circle, blue square, black diamond) pointing off down the runs.
+    'trail-sign': (seed) => {
+      const g = new THREE.Group();
+      const post = mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.4, 6), std('#6b4f2a'));
+      post.position.y = 1.2;
+      const cap = mesh(new THREE.SphereGeometry(0.16, 8, 6), std('#f2f7ff'));
+      cap.position.y = 2.42;
+      g.add(post, cap);
+      const badges = [
+        { c: '#3aa655', shape: 'circle' },
+        { c: '#3a6fc4', shape: 'square' },
+        { c: '#1a1a1a', shape: 'diamond' },
+      ];
+      for (let i = 0; i < 3; i++) {
+        const b = badges[(seed + i) % badges.length];
+        const plate = mesh(new THREE.BoxGeometry(1.2, 0.4, 0.08), std('#e9eef3', { roughness: 0.7 }));
+        const side = i % 2 === 0 ? 0.7 : -0.7;
+        plate.position.set(side, 1.9 - i * 0.5, 0);
+        plate.rotation.y = i % 2 === 0 ? -0.2 : 0.2;
+        let badge: THREE.Mesh;
+        if (b.shape === 'circle') badge = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 16), std(b.c, { emissive: b.c, emissiveIntensity: 0.15 }), false);
+        else if (b.shape === 'square') badge = mesh(new THREE.BoxGeometry(0.22, 0.22, 0.04), std(b.c, { emissive: b.c, emissiveIntensity: 0.15 }), false);
+        else badge = mesh(new THREE.BoxGeometry(0.2, 0.2, 0.04), std(b.c), false);
+        if (b.shape === 'circle') badge.rotation.x = Math.PI / 2;
+        if (b.shape === 'diamond') badge.rotation.z = Math.PI / 4;
+        badge.position.set(side - 0.32, 1.9 - i * 0.5, 0.06);
+        badge.rotation.y = plate.rotation.y;
+        g.add(plate, badge);
+      }
+      return g;
+    },
+    // A pair of skis crossed and planted in the snow, with poles — classic après-ski.
+    'crossed-skis': (seed) => {
+      const g = new THREE.Group();
+      const skiCols = ['#e0533f', '#3a6fc4', '#e0a93f', '#3aa655'];
+      const c1 = skiCols[seed % skiCols.length];
+      const c2 = skiCols[(seed + 2) % skiCols.length];
+      const makeSki = (col: string, lean: number) => {
+        const ski = mesh(new THREE.BoxGeometry(0.16, 2.6, 0.06), std(col, { roughness: 0.5 }));
+        // a little upturned tip
+        const tip = mesh(new THREE.BoxGeometry(0.16, 0.4, 0.06), std(col, { roughness: 0.5 }), false);
+        tip.position.set(0, 1.4, 0.1);
+        tip.rotation.x = -0.5;
+        const grp = new THREE.Group();
+        grp.add(ski, tip);
+        grp.position.y = 1.0;
+        grp.rotation.z = lean;
+        return grp;
+      };
+      g.add(makeSki(c1, 0.32), makeSki(c2, -0.32));
+      for (const sx of [-1, 1]) {
+        const pole = mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6), std('#cfd6de', { metalness: 0.3 }));
+        pole.position.set(sx * 0.7, 0.9, 0.2);
+        pole.rotation.z = sx * 0.12;
+        const basket = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 8), std('#2a2f36'), false);
+        basket.position.set(sx * 0.7, 0.3, 0.2);
+        g.add(pole, basket);
+      }
+      return g;
+    },
+    // A snow-laden pine.
+    'snow-pine': (seed) => {
+      const g = new THREE.Group();
+      const trunk = mesh(new THREE.CylinderGeometry(0.16, 0.24, 1.1, 7), std('#6b4a2e'));
+      trunk.position.y = 0.55;
+      g.add(trunk);
+      const green = std(['#2f6e4a', '#357a52', '#2c6644'][seed % 3], { roughness: 0.85 });
+      const snow = std('#f4f8fc', { roughness: 0.8 });
+      const tiers = [
+        { y: 1.4, r: 1.2, h: 1.5 },
+        { y: 2.2, r: 0.92, h: 1.25 },
+        { y: 2.9, r: 0.62, h: 1.0 },
+      ];
+      for (const t of tiers) {
+        const cone = mesh(new THREE.ConeGeometry(t.r, t.h, 8), green);
+        cone.position.y = t.y;
+        const snowCap = mesh(new THREE.ConeGeometry(t.r * 0.92, t.h * 0.42, 8), snow, false);
+        snowCap.position.y = t.y + t.h * 0.32;
+        g.add(cone, snowCap);
+      }
+      g.rotation.y = (seed % 5) * 1.1;
+      return g;
+    },
+    // A friendly snowman.
+    'snowman': () => {
+      const g = new THREE.Group();
+      const snow = std('#f6fafe', { roughness: 0.9 });
+      const r = [0.7, 0.52, 0.38];
+      let y = 0.7;
+      for (let i = 0; i < 3; i++) {
+        const ball = mesh(new THREE.SphereGeometry(r[i], 16, 12), snow);
+        ball.position.y = y;
+        g.add(ball);
+        y += r[i] + (r[i + 1] ?? 0.34) - 0.12;
+      }
+      const headY = 0.7 + (r[0] + r[1] - 0.12) + (r[1] + r[2] - 0.12);
+      const coal = std('#1b1b1b');
+      for (const sx of [-1, 1]) {
+        const eye = mesh(new THREE.SphereGeometry(0.05, 8, 8), coal, false);
+        eye.position.set(sx * 0.13, headY + 0.08, r[2] - 0.02);
+        g.add(eye);
+      }
+      const nose = mesh(new THREE.ConeGeometry(0.07, 0.36, 7), std('#e8832a'), false);
+      nose.position.set(0, headY - 0.02, r[2] + 0.05);
+      nose.rotation.x = Math.PI / 2;
+      g.add(nose);
+      for (let i = 0; i < 3; i++) {
+        const btn = mesh(new THREE.SphereGeometry(0.05, 8, 8), coal, false);
+        btn.position.set(0, 1.3 + i * 0.22, r[1] - 0.04);
+        g.add(btn);
+      }
+      const armMat = std('#5a4326');
+      for (const sx of [-1, 1]) {
+        const arm = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 5), armMat);
+        arm.position.set(sx * 0.6, 1.35, 0);
+        arm.rotation.z = sx * 1.0;
+        g.add(arm);
+      }
+      return g;
+    },
+    // A low snow drift / mound to break up the plateau.
+    'snow-mound': (seed) => {
+      const g = new THREE.Group();
+      const snow = std('#eef4fb', { roughness: 0.95 });
+      const n = 3 + (seed % 2);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + seed;
+        const r = 1.2 + (i % 2) * 0.7;
+        const mound = mesh(new THREE.SphereGeometry(r, 12, 8), snow);
+        mound.scale.set(1, 0.4, 1);
+        mound.position.set(Math.cos(a) * 1.1, 0.1, Math.sin(a) * 1.1);
+        mound.receiveShadow = true;
+        g.add(mound);
+      }
+      return g;
+    },
+    // Localized falling snow over the summit (self-animating in the vertex shader,
+    // ticked via the shared per-frame uTime — tagged `water` to reuse that tick).
+    'snow-fall': () => {
+      const g = new THREE.Group();
+      const N = 520;
+      const W = 36;
+      const H = 18;
+      const positions = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * W;
+        positions[i * 3 + 1] = Math.random() * H;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * W;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: '#ffffff', size: 0.5, transparent: true, opacity: 0.9, depthWrite: false, sizeAttenuation: true });
+      mat.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = { value: 0 };
+        shader.uniforms.uH = { value: H };
+        mat.userData.shader = shader;
+        shader.vertexShader =
+          'uniform float uTime; uniform float uH;\n' +
+          shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>
+             transformed.y = mod(position.y - uTime * 3.2, uH);
+             transformed.x += sin(uTime * 0.8 + position.y * 0.6) * 0.7;
+             transformed.z += cos(uTime * 0.7 + position.x * 0.5) * 0.5;`,
+          );
+      };
+      const pts = new THREE.Points(geo, mat);
+      pts.frustumCulled = false;
+      pts.userData.water = true; // reuse the per-frame shader uTime tick
+      g.add(pts);
       return g;
     },
   };

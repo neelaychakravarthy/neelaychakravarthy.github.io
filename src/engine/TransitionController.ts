@@ -18,6 +18,9 @@ export interface MorphOptions {
   fx: MorphFX;
   rig: CameraRig;
   onComplete: () => void;
+  /** Snap the unit to the spawn instantly instead of gliding it there — used by
+   *  the ski-lift, which has already carried the car and hands off mid-air. */
+  snapUnit?: boolean;
 }
 
 /**
@@ -53,8 +56,13 @@ export class TransitionController {
 
     // Pull the unit back to the incoming biome's spawn as the world reassembles.
     const sp = o.spawn.position;
-    tl.to(o.unit.object.position, { x: sp[0], y: sp[1], z: sp[2], duration: D * 0.85, ease: 'power2.inOut' }, 0);
-    tl.to(o.unit.object.rotation, { y: o.spawn.rotationY ?? Math.PI, duration: D * 0.6, ease: 'power2.inOut' }, 0);
+    if (o.snapUnit) {
+      o.unit.object.position.set(sp[0], sp[1], sp[2]);
+      o.unit.object.rotation.set(0, o.spawn.rotationY ?? Math.PI, 0);
+    } else {
+      tl.to(o.unit.object.position, { x: sp[0], y: sp[1], z: sp[2], duration: D * 0.85, ease: 'power2.inOut' }, 0);
+      tl.to(o.unit.object.rotation, { y: o.spawn.rotationY ?? Math.PI, duration: D * 0.6, ease: 'power2.inOut' }, 0);
+    }
 
     // Sink the current world in staggered waves.
     o.from.morphItems.forEach((it, i) => {

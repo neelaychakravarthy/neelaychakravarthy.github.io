@@ -78,6 +78,23 @@ export interface PadConfig {
   label: string;
   color?: string;
   radius?: number;
+  /** Make this a ski-lift pad: rolling on carries the car along `ride` to the
+   *  destination instead of an instant morph. */
+  lift?: LiftConfig;
+}
+
+/** A ski-lift transport, attached to a pad. The car boards, waits for a chair,
+ *  is carried along the `ride` cable (eased at both ends) — all in-world, no biome
+ *  switch — then set down on the summit or the ground and auto-driven to `land`. */
+export interface LiftConfig {
+  /** Cable waypoints (bottom → top for up, top → bottom for down), world coords. */
+  ride: Vec3[];
+  /** Land on the raised summit surface (true) or back on flat ground (false). */
+  toSummit?: boolean;
+  /** After being set down, auto-drive here (x, z), then control returns. */
+  land: [number, number];
+  /** Ride duration in seconds (default 4). */
+  duration?: number;
 }
 
 export interface SpawnConfig {
@@ -115,7 +132,7 @@ export interface AtmosphereConfig {
   /** number of circling birds */
   birds?: number;
   /** floating particle style */
-  particles?: 'pollen' | 'fireflies' | 'dust' | 'none';
+  particles?: 'pollen' | 'fireflies' | 'dust' | 'snow' | 'none';
   particleColor?: string;
   particleCount?: number;
   /** number of stars (night skies) */

@@ -89,6 +89,8 @@ interface Particles {
   twinkle: boolean;
   bounds: number;
   rise: number;
+  /** Snow: particles fall and reset to the top instead of rising. */
+  fall: boolean;
 }
 
 /** One biome's worth of atmosphere; faded via a single 0..1 intensity. */
@@ -324,20 +326,22 @@ class Layer {
     }
   }
 
-  private buildParticles(kind: 'pollen' | 'fireflies' | 'dust', count: number, color?: string) {
-    const bounds = 26;
+  private buildParticles(kind: 'pollen' | 'fireflies' | 'dust' | 'snow', count: number, color?: string) {
+    const bounds = 30;
+    const snow = kind === 'snow';
+    const rise = snow ? 16 : 8;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
     const phases = new Float32Array(count);
-    const base = new THREE.Color(color ?? (kind === 'fireflies' ? '#7dffd6' : kind === 'dust' ? '#cfe0ff' : '#fff3c8'));
+    const base = new THREE.Color(color ?? (kind === 'fireflies' ? '#7dffd6' : kind === 'dust' ? '#cfe0ff' : snow ? '#ffffff' : '#fff3c8'));
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * bounds * 2;
-      positions[i * 3 + 1] = 0.5 + Math.random() * 7;
+      positions[i * 3 + 1] = snow ? Math.random() * rise : 0.5 + Math.random() * 7;
       positions[i * 3 + 2] = (Math.random() - 0.5) * bounds * 2;
-      velocities[i * 3] = (Math.random() - 0.5) * 0.4;
-      velocities[i * 3 + 1] = 0.1 + Math.random() * 0.3;
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.4;
+      velocities[i * 3] = (Math.random() - 0.5) * (snow ? 0.5 : 0.4);
+      velocities[i * 3 + 1] = snow ? -(1.4 + Math.random() * 1.4) : 0.1 + Math.random() * 0.3;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * (snow ? 0.5 : 0.4);
       phases[i] = Math.random() * Math.PI * 2;
       colors[i * 3] = base.r;
       colors[i * 3 + 1] = base.g;
@@ -348,7 +352,7 @@ class Layer {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const fireflies = kind === 'fireflies';
     const mat = new THREE.PointsMaterial({
-      size: fireflies ? 0.5 : 0.34,
+      size: fireflies ? 0.5 : snow ? 0.52 : 0.34,
       map: this.sharedTex,
       vertexColors: true,
       transparent: true,
@@ -357,11 +361,11 @@ class Layer {
       blending: fireflies ? THREE.AdditiveBlending : THREE.NormalBlending,
       sizeAttenuation: true,
     });
-    this.fadeMats.push({ mat, base: fireflies ? 1 : 0.6 });
+    this.fadeMats.push({ mat, base: fireflies ? 1 : snow ? 0.85 : 0.6 });
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false;
     this.group.add(points);
-    this.particles = { points, velocities, phases, base, twinkle: fireflies, bounds, rise: 8 };
+    this.particles = { points, velocities, phases, base, twinkle: fireflies, bounds, rise, fall: snow };
   }
 
   private buildStars(n: number) {
@@ -444,10 +448,14 @@ class Layer {
       for (let i = 0; i < pos.count; i++) {
         // drift by their own velocity only (world-anchored), then wrap toward the
         // unit — so they parallax past as the car moves, never glued to the screen.
-        arr[i * 3] += p.velocities[i * 3] * dt + Math.sin(t * 0.6 + p.phases[i]) * 0.01;
+        arr[i * 3] += p.velocities[i * 3] * dt + Math.sin(t * (p.fall ? 1.4 : 0.6) + p.phases[i]) * (p.fall ? 0.03 : 0.01);
         arr[i * 3 + 1] += p.velocities[i * 3 + 1] * dt;
         arr[i * 3 + 2] += p.velocities[i * 3 + 2] * dt;
-        if (arr[i * 3 + 1] > p.rise) arr[i * 3 + 1] = 0.4;
+        if (p.fall) {
+          if (arr[i * 3 + 1] < 0.1) arr[i * 3 + 1] = p.rise; // landed → back to the top
+        } else if (arr[i * 3 + 1] > p.rise) {
+          arr[i * 3 + 1] = 0.4;
+        }
         arr[i * 3] = wrapToward(arr[i * 3], unitX, p.bounds);
         arr[i * 3 + 2] = wrapToward(arr[i * 3 + 2], unitZ, p.bounds);
         if (p.twinkle) {

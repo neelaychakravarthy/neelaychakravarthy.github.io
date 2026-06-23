@@ -15,9 +15,11 @@ import { TourController, type PadLink } from './engine/TourController';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
 import { AssetRegistry } from './engine/AssetRegistry';
-import { BiomeManager } from './engine/Biome';
+import { BiomeManager, type PadInstance } from './engine/Biome';
 import { TransitionController } from './engine/TransitionController';
 import { InteractionManager } from './engine/InteractionManager';
+import { LiftController } from './engine/LiftController';
+import { summitHeight, SUMMIT_BASE_Y } from './engine/summit';
 import { loadWorld } from './engine/WorldLoader';
 import { AudioManager } from './engine/AudioManager';
 import { WORLD_PERIOD, setWorldPeriod, wrapDelta } from './engine/wrap';
@@ -138,6 +140,7 @@ async function boot() {
 
   let locked = false;
   let tourActive = false;
+  let liftActive = false;
   /** True once the visitor has left the start screen (free roam or a finished
    *  tour) — gates the floating "Guided tour" button. */
   let entered = false;
@@ -162,10 +165,10 @@ async function boot() {
         window.open(url, '_blank', 'noopener');
       }
     },
-    isLocked: () => locked || tourActive,
+    isLocked: () => locked || tourActive || liftActive,
   });
 
-  function triggerMorph(target: string) {
+  function triggerMorph(target: string, opts?: { spawn?: SpawnConfig; snap?: boolean }) {
     if (locked || !biomes.current || biomes.current.id === target) return;
     locked = true;
     unit.stop();
@@ -185,7 +188,7 @@ async function boot() {
     audio.setBiome(to.config.audio);
     atmosphere.setBiome(to.config.atmosphere, { river: to.river, pads: to.pads });
     engine.postfx.setSelection([...from.glows, ...to.glows]);
-    const spawn = to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
+    const spawn = opts?.spawn ?? to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
     transition.morph({
       from,
       to,
@@ -194,6 +197,7 @@ async function boot() {
       toEnv: env.stateFor(to.config.environment),
       unit,
       spawn,
+      snapUnit: opts?.snap ?? false,
       fx,
       rig,
       onComplete: () => {
@@ -204,11 +208,48 @@ async function boot() {
         focus.setBiome(to.focusables);
         unit.colliders = to.colliders;
         unit.river = to.river;
+        unit.surface = null;
+        click.setGroundPlane(null);
         dolphins.setRiver(to.river);
         engine.postfx.setSelection(to.glows);
+        setLiftMountain();
         locked = false;
       },
     });
+  }
+
+  // ---- ski lift (in-world chair-lift to the mountain summit) ----
+  const lift = new LiftController({
+    unit,
+    fx,
+    rig,
+    audio,
+    enterSummit: () => {
+      unit.surface = summitHeight; // drive on the raised dome
+      unit.colliders = [];
+      unit.river = null;
+      click.setGroundPlane(SUMMIT_BASE_Y); // clicks resolve on the summit
+    },
+    exitSummit: () => {
+      unit.surface = null; // back on flat ground
+      unit.colliders = biomes.current?.colliders ?? [];
+      unit.river = biomes.current?.river ?? null;
+      click.setGroundPlane(null);
+    },
+    setActive: (a) => {
+      liftActive = a;
+    },
+  });
+  /** Hand the lift the current biome's ski-mountain (it owns the chair loop). */
+  function setLiftMountain() {
+    lift.setLift(biomes.current?.skiLifts[0] ?? null);
+  }
+  setLiftMountain();
+
+  /** A pad was rolled onto: ride the lift if it's a lift pad, else morph. */
+  function onPadEnter(pad: PadInstance) {
+    if (pad.lift) lift.ride(pad.lift);
+    else triggerMorph(pad.target);
   }
 
   // ---- guided tour ----
@@ -362,9 +403,11 @@ async function boot() {
 
   engine.start((dt) => {
     tour.update(dt); // resolve tour steps (may set a new drive target) before the unit moves
-    if (!locked) {
+    lift.update(dt); // the ski lift owns the car's transform while carrying it
+    if (!locked && !lift.carrying) {
       unit.update(dt);
-      if (!tourActive) interaction.update(unit.position, triggerMorph); // tour morphs explicitly
+      // tour + lift drive morphs explicitly, so suppress the proximity trigger then
+      if (!tourActive && !liftActive) interaction.update(unit.position, onPadEnter);
     }
     // Seamless toroidal world: draw content at its nearest image to the unit and
     // recentre the ground/sky/sun on the unit, so every direction loops back.
@@ -373,10 +416,10 @@ async function boot() {
     click.update(dt, unit.hasTarget && !locked);
     // Engage focus only when parked near content; the moment the unit is driving
     // (hasTarget), release so the player sees the world and can steer freely.
-    const focusOverride = focus.update(dt, unit.position, !locked && !unit.hasTarget);
+    const focusOverride = focus.update(dt, unit.position, !locked && !unit.hasTarget && !liftActive);
     rig.update(dt, unit.position, focusOverride);
     fx.update(dt);
-    tireFX.update(dt, unit);
+    if (!lift.carrying) tireFX.update(dt, unit); // no tyre dust while airborne on the lift
     dolphins.update(dt, unit.position.x);
     atmosphere.update(dt, unit.position.x, unit.position.z);
     biomes.update(dt, engine.camera, unit.position);
