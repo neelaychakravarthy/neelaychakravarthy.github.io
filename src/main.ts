@@ -301,8 +301,19 @@ async function boot() {
     tour.start(); // restarts from the top; drives back to the hub first
   });
   document.body.appendChild(tourBtn);
+
+  // Floating "View portfolio" button: lets anyone exploring the 3D world jump to
+  // the document-style portfolio page at any time. Top-left, so it never collides
+  // with the top-centre tour button or the top-right skip buttons.
+  const portfolioBtn = document.createElement('a');
+  portfolioBtn.id = 'view-portfolio';
+  portfolioBtn.href = '/portfolio.html';
+  portfolioBtn.innerHTML = '▤&nbsp; Portfolio';
+  document.body.appendChild(portfolioBtn);
+
   function updateTourButton() {
     tourBtn.style.display = entered && !tourActive ? 'block' : 'none';
+    portfolioBtn.style.display = entered ? 'inline-flex' : 'none';
   }
   updateTourButton();
 
@@ -371,7 +382,8 @@ async function boot() {
   if (import.meta.env.DEV) {
     stats = new Stats();
     stats.showPanel(0);
-    stats.dom.style.cssText = 'position:fixed;top:8px;left:8px;z-index:30;';
+    // below the floating "View portfolio" button (dev HUD only; not in prod)
+    stats.dom.style.cssText = 'position:fixed;top:54px;left:8px;z-index:30;';
     document.body.appendChild(stats.dom);
 
     const gui = new GUI({ title: 'Settings' });
