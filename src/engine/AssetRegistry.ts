@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { WORLD_PERIOD } from './wrap';
-import { SUMMIT_BASE_Y, SUMMIT_DOME, SUMMIT_RADIUS } from './summit';
+import { SUMMIT_BASE_Y, SUMMIT_DOME, SUMMIT_RADIUS, SUMMIT_PEAK_DX, SUMMIT_PEAK_DZ, SUMMIT_PEAK_R } from './summit';
 
 /** Half-width (x) of the central grass land-bridge; the river is the gap beyond it. */
 export const BRIDGE_HALF = 42;
@@ -731,10 +731,11 @@ export class AssetRegistry {
       }
 
       // a sharp secondary peak at the back rim, for a proper summit silhouette
-      const peak = mesh(new THREE.ConeGeometry(6, 16, 7), rockDk);
-      peak.position.set(2, SUMMIT_BASE_Y + 7, -11);
+      // (its footprint is a no-go island in summit.ts so the car can't drive in)
+      const peak = mesh(new THREE.ConeGeometry(SUMMIT_PEAK_R + 0.5, 16, 7), rockDk);
+      peak.position.set(SUMMIT_PEAK_DX, SUMMIT_BASE_Y + 7, SUMMIT_PEAK_DZ);
       const peakSnow = mesh(new THREE.ConeGeometry(3.2, 7, 7), snowMat);
-      peakSnow.position.set(2, SUMMIT_BASE_Y + 12, -11);
+      peakSnow.position.set(SUMMIT_PEAK_DX, SUMMIT_BASE_Y + 12, SUMMIT_PEAK_DZ);
       g.add(peak, peakSnow);
 
       // ---- the chair-lift, a continuous conveyor loop up the south face ----
