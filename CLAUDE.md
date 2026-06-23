@@ -33,6 +33,12 @@ Recipes for all of the above: [`docs/COOKBOOK.md`](docs/COOKBOOK.md). Module +
 - **Commit locally; push only when the user asks.** Pushing `main` triggers a
   live deploy (GitHub Actions → GitHub Pages).
 - `npm run build` must pass (it type-checks via `tsc`).
+- **Map first for spatial work.** Before placing or moving anything in the world
+  (a biome, pad, structure, the racetrack, beaches, the mountain…), draw a
+  colored top-down map of the world + the proposed change for the user to review
+  **before** writing code. Orient north up (north = −z), show the toroidal tile
+  (period 140, so −70..70), a grid, an N compass, and a legend; pull coordinates
+  from `public/world.json`. Use the visualization tool for the SVG.
 - **Verify visually in the Vite preview before finishing** — boot a biome
   directly via `startBiome`, drive with synthetic pointer events, screenshot. See
   "Verification" in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
