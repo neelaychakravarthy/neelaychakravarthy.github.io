@@ -147,11 +147,11 @@ html, body {
 #tour-caption::after { content: '▌'; opacity: 0.6; margin-left: 1px; animation: caret 0.9s steps(1) infinite; }
 @keyframes caret { 50% { opacity: 0; } }
 
-/* ---- skip-tour button ---- */
-#tour-skip {
+/* ---- tour controls (skip section / skip tour) ---- */
+#tour-skip,
+#tour-next {
   position: fixed;
   top: calc(14px + env(safe-area-inset-top));
-  right: calc(14px + env(safe-area-inset-right));
   display: none;
   font-family: var(--ui-font);
   font-size: 13px;
@@ -166,7 +166,17 @@ html, body {
   cursor: pointer;
   z-index: 26;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
+#tour-skip { right: calc(14px + env(safe-area-inset-right)); }
+/* sits just left of "Skip tour ✕"; accented as the primary "keep going" action */
+#tour-next {
+  right: calc(118px + env(safe-area-inset-right));
+  background: rgba(36, 56, 84, 0.62);
+  border-color: rgba(140, 190, 255, 0.45);
+}
+#tour-skip:hover { background: rgba(28, 44, 66, 0.72); transform: translateY(-1px); }
+#tour-next:hover { background: rgba(48, 74, 110, 0.78); transform: translateY(-1px); }
 
 /* ---- floating start/resume-tour button (free roam) ---- */
 #start-tour {

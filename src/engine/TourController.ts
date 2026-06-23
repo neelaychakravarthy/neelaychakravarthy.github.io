@@ -117,12 +117,15 @@ const CLOSING = [
 export class TourController {
   active = false;
   private aborted = false;
+  /** Skip just the current stop and jump to the next (reset per stop). */
+  private skipStop = false;
   private time = 0;
   private readonly waiters: Array<{ done: () => boolean; resolve: () => void; deadline: number }> = [];
 
   // caption typewriter
   private readonly caption: HTMLDivElement;
   private readonly skipBtn: HTMLButtonElement;
+  private readonly nextBtn: HTMLButtonElement;
   private full = '';
   private shown = 0;
   private typing = false;
@@ -134,6 +137,12 @@ export class TourController {
     this.caption = document.createElement('div');
     this.caption.id = 'tour-caption';
     document.body.appendChild(this.caption);
+
+    this.nextBtn = document.createElement('button');
+    this.nextBtn.id = 'tour-next';
+    this.nextBtn.textContent = 'Skip section ▸';
+    this.nextBtn.addEventListener('click', () => this.skipSection());
+    document.body.appendChild(this.nextBtn);
 
     this.skipBtn = document.createElement('button');
     this.skipBtn.id = 'tour-skip';
@@ -147,19 +156,31 @@ export class TourController {
     if (this.active) return;
     this.active = true;
     this.aborted = false;
+    this.skipStop = false;
     this.time = 0;
     this.d.unit.stop(); // drop any free-roam drive target so we don't drift
     this.d.setTourActive(true);
     this.d.rig.enabled = false;
     this.skipBtn.style.display = 'block';
+    this.nextBtn.style.display = 'block';
     void this.run();
   }
 
+  /** Abandon the whole tour. */
   skip() {
     if (!this.active) return;
     this.aborted = true;
     this.d.unit.stop();
     this.end();
+  }
+
+  /** Skip the current stop and jump to the next one. */
+  skipSection() {
+    if (!this.active || this.aborted) return;
+    this.skipStop = true; // interrupts the current stop's narration/driving
+    this.typing = false;
+    this.caption.classList.remove('show');
+    this.d.unit.stop();
   }
 
   update(dt: number) {
@@ -177,7 +198,7 @@ export class TourController {
     }
     for (let i = this.waiters.length - 1; i >= 0; i--) {
       const w = this.waiters[i];
-      if (this.aborted || w.done() || this.time >= w.deadline) {
+      if (this.aborted || this.skipStop || w.done() || this.time >= w.deadline) {
         this.waiters.splice(i, 1);
         w.resolve();
       }
@@ -194,12 +215,14 @@ export class TourController {
     await this.sayAll(WELCOME);
     for (let i = 0; i < STOPS.length; i++) {
       if (this.aborted) return;
+      this.skipStop = false; // each stop starts fresh; "skip section" jumps here
       // Navigate to every stop including the first — a no-op when already at the
       // hub (fresh start), but drives back when the tour is started mid-roam.
       await this.navigateTo(STOPS[i].id, STOPS[i].lead);
       await this.tourBiome(STOPS[i].lines);
     }
     if (this.aborted) return;
+    this.skipStop = false; // let the closing play even if the last stop was skipped
     await this.navigateTo('hub');
     await this.sayAll(CLOSING);
     if (!this.aborted) this.end();
@@ -207,7 +230,7 @@ export class TourController {
 
   /** Drive to each board/panel in the current biome, zoom it, narrate. */
   private async tourBiome(lines: string[]) {
-    if (this.aborted) return;
+    if (this.aborted || this.skipStop) return;
     const all = this.d.getFocusables();
     const boards = all.filter((f) => f.userData.focusOneSided === false);
     const panels = all.filter((f) => f.userData.focusOneSided === true).slice(0, 1);
@@ -219,7 +242,7 @@ export class TourController {
       return;
     }
     for (let i = 0; i < stops.length; i++) {
-      if (this.aborted) return;
+      if (this.aborted || this.skipStop) return;
       await this.driveToBoard(stops[i]);
       const last = i === stops.length - 1;
       const chunk = last ? queue.splice(0) : queue.length ? [queue.shift() as string] : [];
@@ -246,7 +269,7 @@ export class TourController {
   private async navigateTo(target: string, lead?: string[]) {
     let guard = 0;
     let leadSaid = false;
-    while (!this.aborted && this.d.currentBiomeId() !== target && guard++ < 8) {
+    while (!this.aborted && !this.skipStop && this.d.currentBiomeId() !== target && guard++ < 8) {
       const cur = this.d.currentBiomeId();
       if (!cur) break;
       const path = bfsPath(this.d.padGraph, cur, target);
@@ -255,7 +278,7 @@ export class TourController {
       if (next === target && lead && lead.length && !leadSaid) {
         leadSaid = true;
         await this.sayAll(lead); // parked in the penultimate biome, before the final morph
-        if (this.aborted) return;
+        if (this.aborted || this.skipStop) return;
       }
       const pad = this.d.padGraph.get(cur)?.find((p) => p.target === next);
       if (!pad) break;
@@ -276,7 +299,7 @@ export class TourController {
   // ---- caption ----
   private async sayAll(lines: string[]) {
     for (const l of lines) {
-      if (this.aborted) return;
+      if (this.aborted || this.skipStop) return;
       await this.say(l);
     }
   }
@@ -309,6 +332,7 @@ export class TourController {
     this.waiters.length = 0;
     this.caption.classList.remove('show');
     this.skipBtn.style.display = 'none';
+    this.nextBtn.style.display = 'none';
     this.d.unit.stop();
     this.d.setTourActive(false);
     this.d.rig.enabled = true;
