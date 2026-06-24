@@ -31,6 +31,11 @@ export class CameraRig {
   followRate = 6;
   /** When false, user zoom/orbit input is ignored (e.g. during the guided tour). */
   enabled = true;
+  /** When set (keyboard driving), the camera smoothly swings behind the car so it
+   *  always looks the way the car is heading. Null = free orbit (mouse control). */
+  chaseYaw: number | null = null;
+  /** How quickly the chase camera swings behind the car. */
+  chaseRate = 5;
 
   private readonly target = new THREE.Vector3();
   private readonly lookTarget = new THREE.Vector3();
@@ -123,6 +128,11 @@ export class CameraRig {
 
   private onContextMenu = (e: Event) => e.preventDefault();
 
+  /** Lock the camera behind a car heading (yaw, radians), or null for free orbit. */
+  setChase(yaw: number | null) {
+    this.chaseYaw = yaw;
+  }
+
   /** Computes the camera offset for the current elevation/azimuth/distance. */
   private computeOffset(out: THREE.Vector3) {
     const elev = THREE.MathUtils.degToRad(this.elevationDeg);
@@ -135,6 +145,15 @@ export class CameraRig {
   }
 
   update(dt: number, focus: THREE.Vector3, override?: FocusOverride | null) {
+    // Chase-lock: while keyboard-driving, swing the azimuth behind the car so the
+    // camera looks where the car heads. azimuth 0 sits behind a north-facing car,
+    // so the target is yaw + π. Skipped while the user is actively right-dragging.
+    if (this.chaseYaw !== null && !this.dragging) {
+      let d = this.chaseYaw + Math.PI - this.azimuth;
+      d = Math.atan2(Math.sin(d), Math.cos(d)); // shortest way round
+      this.azimuth += d * (1 - Math.exp(-this.chaseRate * dt));
+    }
+
     this.computeOffset(this.offset);
     this.desired.copy(focus).add(this.offset);
     this.lookTarget.set(focus.x, focus.y + this.targetHeight, focus.z);

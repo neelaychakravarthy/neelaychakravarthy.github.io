@@ -227,5 +227,80 @@ html, body {
 }
 #view-portfolio:hover { background: rgba(36, 56, 84, 0.7); transform: translateY(-1px); }
 
+/* ---- lap timer (racetrack) ---- */
+#lap-timer {
+  position: fixed;
+  top: calc(56px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  font-family: var(--ui-font);
+  text-align: center;
+  padding: 7px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(20, 32, 48, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f2f7ff;
+  z-index: 26;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.5s ease, border-color 0.2s ease, background 0.2s ease;
+}
+/* fades in when a race countdown starts, out a moment after it ends */
+#lap-timer.show { opacity: 1; }
+#lap-timer .lt-cur {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+#lap-timer .lt-rows {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  font-size: 11px;
+  opacity: 0.82;
+  margin-top: 2px;
+}
+#lap-timer .lt-rows b { font-weight: 700; font-variant-numeric: tabular-nums; }
+#lap-timer.flash {
+  border-color: rgba(120, 230, 150, 0.9);
+  background: rgba(28, 70, 48, 0.72);
+  animation: lapflash 0.5s ease;
+}
+@keyframes lapflash {
+  0% { transform: translateX(-50%) scale(1); }
+  35% { transform: translateX(-50%) scale(1.13); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+/* ---- race countdown overlay (3 · 2 · 1 · GO) ---- */
+#race-countdown {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--ui-font);
+  font-size: clamp(72px, 16vw, 150px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-shadow: 0 6px 34px rgba(8, 18, 32, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+#race-countdown.go { color: #4fe39a; }
+#race-countdown.show { animation: cdpop 0.85s ease-out both; }
+@keyframes cdpop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
 /* lil-gui placement tweak */
 .lil-gui.root { z-index: 20; }

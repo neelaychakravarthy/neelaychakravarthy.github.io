@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { wrapDelta, wrapNearest } from './wrap';
+import { bridgeHeight, ROAD_HALF, type BridgeSpan } from './bridges';
 
 /**
  * A circular no-go region (mountain base, water, etc.). Anchored to a structure
@@ -13,6 +14,22 @@ export interface Collider {
   dx: number;
   dz: number;
   radius: number;
+}
+
+/**
+ * A rectangular (oriented) no-go region — the footprint of any solid object
+ * (buildings, props, stands…). Anchored like Collider (ax,az tile with the world;
+ * dx,dz is the rotated centre offset), with half-extents (hx,hz) along the box's
+ * own axes and a rotation. Lets the car stop flush against walls of any size.
+ */
+export interface BoxCollider {
+  ax: number;
+  az: number;
+  dx: number;
+  dz: number;
+  hx: number;
+  hz: number;
+  rot: number;
 }
 
 /**
@@ -51,8 +68,19 @@ export class Unit {
 
   /** Circular obstacles the unit can't enter (drives around / stops at the edge). */
   colliders: Collider[] = [];
+  /** Rectangular obstacles (auto-derived from solid structures' footprints). */
+  boxColliders: BoxCollider[] = [];
+  /** When true, all obstacle/river clamping is skipped — the unit passes through
+   *  everything. Used by the guided tour, which drives the car on scripted rails
+   *  to exact stops and must never be blocked by a prop. */
+  ghost = false;
+  /** Car half-width, padded onto obstacles so the body (not just its centre) stops. */
+  private readonly bodyRadius = 1.0;
   /** Optional looping river that blocks all but the central land-bridge. */
   river: RiverBlock | null = null;
+  /** Racetrack bridge spans (world centre-lines). Over a bridge the river block
+   *  is lifted (the car crosses the water) and the car rides the raised deck. */
+  bridgeSpans: BridgeSpan[] = [];
   /** Optional raised surface (e.g. the mountain summit): returns the drivable
    *  height at (x,z), or null off its edge (a wall). When set, the car's y follows
    *  it. Null surface = ordinary flat ground at y = 0. */
@@ -62,6 +90,10 @@ export class Unit {
   private velocity = 0;
   private prevX = 0;
   private prevZ = 0;
+  private boostTimer = 0;
+  private boostSpeed = 0;
+  private driveThrottle = 0;
+  private driveSteer = 0;
   private readonly wheels: THREE.Mesh[] = [];
 
   private readonly toTarget = new THREE.Vector3();
@@ -79,6 +111,13 @@ export class Unit {
     return this.target !== null;
   }
 
+  /** True while the player is actively driving — a click target, live keyboard
+   *  input, or still rolling. Lets the read-up focus release the instant you move
+   *  by ANY means (click or keyboard), not just on a click target. */
+  get driving(): boolean {
+    return this.target !== null || this.driveThrottle !== 0 || this.driveSteer !== 0 || Math.abs(this.velocity) > 0.4;
+  }
+
   /** Current forward speed (world units / second) — for the tire dust FX. */
   get currentSpeed(): number {
     return this.velocity;
@@ -87,6 +126,7 @@ export class Unit {
   setTarget(p: THREE.Vector3) {
     this.target = p.clone();
     this.target.y = 0;
+    if (this.ghost) return; // on rails (guided tour): aim exactly where told
     // If the destination is inside an obstacle, pull it to that obstacle's edge
     // so the car drives up to the shore/mountain and stops cleanly (no grinding).
     for (const c of this.colliders) {
@@ -101,13 +141,38 @@ export class Unit {
         this.target.z += dz * s;
       }
     }
+    for (const b of this.boxColliders) this.pushOutOfBox(this.target, b, 0);
     this.clampOutOfRiver(this.target);
+  }
+
+  /** Push a point out of an oriented box (with `pad` added to its extents). Used
+   *  both to clamp click targets and to resolve the car each frame. */
+  private pushOutOfBox(p: THREE.Vector3, b: BoxCollider, pad: number) {
+    const cx = wrapNearest(p.x, b.ax) + b.dx;
+    const cz = wrapNearest(p.z, b.az) + b.dz;
+    const wx = p.x - cx;
+    const wz = p.z - cz;
+    const c = Math.cos(b.rot);
+    const s = Math.sin(b.rot);
+    const lx = c * wx - s * wz; // world delta → box-local
+    const lz = s * wx + c * wz;
+    const px = b.hx + pad;
+    const pz = b.hz + pad;
+    if (Math.abs(lx) >= px || Math.abs(lz) >= pz) return; // outside
+    let nlx = lx;
+    let nlz = lz;
+    if (px - Math.abs(lx) < pz - Math.abs(lz)) nlx = Math.sign(lx) * px; // push along nearer face
+    else nlz = Math.sign(lz) * pz;
+    p.x = cx + c * nlx + s * nlz; // box-local → world
+    p.z = cz - s * nlx + c * nlz;
   }
 
   /** If a point is in the river, pull it to the nearest bank or bridge edge. */
   private clampOutOfRiver(p: THREE.Vector3) {
     const r = this.river;
     if (!r) return;
+    // On a racetrack bridge the water doesn't block — let the car drive across.
+    if (this.bridgeSpans.length && bridgeHeight(p.x, p.z, this.bridgeSpans, ROAD_HALF) > 0.01) return;
     const dz = wrapDelta(p.z, r.centerZ);
     const dx = wrapDelta(p.x, 0);
     if (Math.abs(dz) >= r.halfZ || Math.abs(dx) <= r.bridgeHalf) return;
@@ -121,6 +186,25 @@ export class Unit {
   stop() {
     this.target = null;
     this.velocity = 0;
+    this.boostTimer = 0;
+  }
+
+  /** Fire a speed boost (a track boost-strip): an instant surge to `speed` plus a
+   *  raised top-speed cap for `duration` seconds. It does NOT steer the car — you
+   *  keep full control (keyboard or click) and retain the speed while changing
+   *  direction; the cap relaxes back to normal when it expires. */
+  boost(speed: number, duration: number) {
+    this.boostSpeed = speed;
+    this.boostTimer = Math.max(this.boostTimer, duration);
+    if (this.velocity < speed) this.velocity = speed; // instant surge in the current heading
+  }
+
+  /** Direct keyboard driving input, applied each frame: throttle (−1 reverse …
+   *  +1 forward) and steer (+1 left … −1 right). Any non-zero input takes over
+   *  from click-to-move (and clears the click target). */
+  setDrive(throttle: number, steer: number) {
+    this.driveThrottle = throttle;
+    this.driveSteer = steer;
   }
 
   update(dt: number) {
@@ -128,6 +212,32 @@ export class Unit {
     this.prevZ = this.position.z;
     const yaw = this.object.rotation.y;
     this.forward.set(Math.sin(yaw), 0, Math.cos(yaw));
+
+    // Speed boost (track strip): a temporary raised top speed (the instant surge
+    // happens in boost()). It never steers — it just lifts the cap for whatever
+    // control mode is active, so you keep control and retain speed while turning.
+    if (this.boostTimer > 0) this.boostTimer -= dt;
+    const maxFwd = this.boostTimer > 0 ? Math.max(this.speed, this.boostSpeed) : this.speed;
+
+    // Keyboard driving (WASD / arrows): direct throttle + steering. Overrides any
+    // click-to-move target; steering eases in at low speed and inverts in reverse.
+    if (this.driveThrottle !== 0 || this.driveSteer !== 0) {
+      this.target = null;
+      const reversing = this.velocity < -0.05;
+      const steerScale = Math.min(1, Math.abs(this.velocity) / 2 + 0.4);
+      // keyboard steering is gentler than the turn rate used for click-to-move pivots
+      const newYaw = yaw + this.driveSteer * this.turnRate * 0.55 * steerScale * (reversing ? -1 : 1) * dt;
+      this.object.rotation.y = newYaw;
+      this.forward.set(Math.sin(newYaw), 0, Math.cos(newYaw));
+      const targetV = this.driveThrottle > 0 ? this.driveThrottle * maxFwd : this.driveThrottle * this.speed * 0.5;
+      this.velocity = approach(this.velocity, targetV, this.accel * dt);
+      this.position.addScaledVector(this.forward, this.velocity * dt);
+      const spin = (this.velocity * dt) / this.wheelRadius;
+      for (const w of this.wheels) w.rotation.x += spin;
+      if (this.colliders.length || this.boxColliders.length || this.river) this.resolveCollisions();
+      this.applySurface(dt);
+      return;
+    }
 
     let targetSpeed = 0;
 
@@ -148,18 +258,18 @@ export class Unit {
         const dir = this.toTarget.clone().normalize();
         const facing = THREE.MathUtils.clamp(this.forward.dot(dir), 0, 1);
         const arrive = THREE.MathUtils.clamp(dist / this.arriveRadius, 0, 1);
-        targetSpeed = this.speed * arrive * (0.25 + 0.75 * facing);
+        targetSpeed = maxFwd * arrive * (0.25 + 0.75 * facing);
       }
     }
 
     // Approach the target speed, then move along the current heading.
     this.velocity = approach(this.velocity, targetSpeed, this.accel * dt);
-    if (this.velocity > 0.0001) {
+    if (Math.abs(this.velocity) > 0.0001) {
       this.position.addScaledVector(this.forward, this.velocity * dt);
       const spin = (this.velocity * dt) / this.wheelRadius;
       for (const w of this.wheels) w.rotation.x += spin;
     }
-    if (this.colliders.length || this.river) this.resolveCollisions();
+    if (this.colliders.length || this.boxColliders.length || this.river) this.resolveCollisions();
     this.applySurface(dt);
   }
 
@@ -185,6 +295,7 @@ export class Unit {
   /** Push the unit out of any obstacle it has entered (slides along the edge,
    *  so you drive around the mountain / along the shore). Toroidally wrapped. */
   private resolveCollisions() {
+    if (this.ghost) return; // guided tour: pass through everything
     for (const c of this.colliders) {
       const cx = wrapNearest(this.position.x, c.ax) + c.dx;
       const cz = wrapNearest(this.position.z, c.az) + c.dz;
@@ -200,6 +311,7 @@ export class Unit {
         this.position.x += c.radius; // dead-centre: shove out along +x
       }
     }
+    for (const b of this.boxColliders) this.pushOutOfBox(this.position, b, this.bodyRadius);
     this.clampOutOfRiver(this.position);
   }
 

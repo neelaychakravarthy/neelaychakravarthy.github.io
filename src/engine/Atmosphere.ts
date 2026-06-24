@@ -23,7 +23,7 @@ const GRASS_R = 54; // carpet half-extent (follows the unit)
 const GRASS_FADE = 36; // blades taper to zero height between here and GRASS_R
 const GRASS_GRID = 268; // blades per side at full quality (GRID² total)
 const GRASS_MAX_CIRCLES = 24;
-const GRASS_MAX_RECTS = 10;
+const GRASS_MAX_RECTS = 36;
 
 /**
  * Atmosphere — procedural ambient life, configured per biome and crossfaded on

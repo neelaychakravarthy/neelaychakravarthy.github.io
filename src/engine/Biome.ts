@@ -5,10 +5,24 @@ import type { AssetRegistry } from './AssetRegistry';
 import { EnvironmentController } from './EnvironmentController';
 import { makeContent, makePad } from './interactables';
 import { wrapNearest } from './wrap';
-import type { Collider, RiverBlock } from './Unit';
+import type { BoxCollider, Collider, RiverBlock } from './Unit';
+import type { RaceZone } from './RaceController';
 
 /** How far (world units) structures drop below ground when sunk during a morph. */
 export const MORPH_SINK = 10;
+
+/** A structure taller than this (and on the ground) is "solid" → auto-collides.
+ *  Set below the shortest furniture we want solid (a wooden desk is ~0.81 tall) so
+ *  desks, tables, pallets etc. all collide consistently, while genuinely flat
+ *  things (plazas, pads, the track, beaches — all ≤~0.3) stay drivable. */
+const AUTO_COLLIDE_MIN_H = 0.7;
+/** Skip auto-collision for structures lifted above the ground (e.g. summit props),
+ *  whose x/z footprint would otherwise wrongly block driving beneath them. */
+const AUTO_COLLIDE_MAX_Y = 3;
+/** Only geometry reaching below this height counts toward the collision footprint,
+ *  so overhanging roofs / tall decoration don't inflate the box past what the car
+ *  can actually hit (a building blocks at its walls, not its eaves). */
+const COLLIDE_SLICE_H = 2.0;
 
 export interface MorphItem {
   obj: THREE.Object3D;
@@ -31,6 +45,16 @@ export interface PadInstance {
   lift?: LiftConfig;
 }
 
+/** A directional speed-boost strip on a racetrack (a `boost-arrow` structure). */
+export interface BoostInstance {
+  position: THREE.Vector3;
+  yaw: number;
+  strength: number;
+  radius: number;
+  duration: number;
+  wasInside: boolean;
+}
+
 export interface BuiltBiome {
   id: string;
   config: BiomeConfig;
@@ -46,9 +70,19 @@ export interface BuiltBiome {
   waters: THREE.Object3D[];
   focusables: THREE.Object3D[];
   colliders: Collider[];
+  boxColliders: BoxCollider[];
   river: RiverBlock | null;
   skiLifts: THREE.Object3D[];
   conveyors: THREE.Object3D[];
+  boosts: BoostInstance[];
+  /** Racetrack lap checkpoints (world), in order; [0] doubles as start/finish. */
+  checkpoints: THREE.Vector3[];
+  /** Racetrack bridge spans (world centre-lines) the car drives over the sea on. */
+  bridgeSpans: { x: number; z: number }[][];
+  /** Extra grass-clear shapes emitted by prefabs (e.g. the track), world-space. */
+  grassClear: number[][];
+  /** Racetrack start (staging pad + grid), world-space; null if no race here. */
+  race: RaceZone | null;
 }
 
 function buildBiome(
@@ -73,25 +107,99 @@ function buildBiome(
   };
 
   const colliders: Collider[] = [];
+  const boxColliders: BoxCollider[] = [];
+  const boosts: BoostInstance[] = [];
+  const checkpoints: THREE.Vector3[] = [];
+  const bridgeSpans: { x: number; z: number }[][] = [];
+  const grassClear: number[][] = [];
+  let race: RaceZone | null = null;
   (config.structures ?? []).forEach((s, i) => {
     const obj = registry.create(s.modelId, i);
+    // Local collision footprint (object at identity, before placing it): the union
+    // of only the ground-reaching meshes, so overhanging roofs/decoration don't
+    // bloat it. Used to auto-derive a box for anything solid, so new props block
+    // the car automatically.
+    obj.updateMatrixWorld(true);
+    const localBox = new THREE.Box3();
+    const meshBox = new THREE.Box3();
+    obj.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      meshBox.setFromObject(m);
+      if (meshBox.min.y < COLLIDE_SLICE_H) localBox.union(meshBox);
+    });
     obj.position.set(...s.position);
     if (s.rotationY) obj.rotation.y = s.rotationY;
     if (s.scale) obj.scale.setScalar(s.scale);
     if (s.backdrop) obj.userData.backdrop = true;
+    const r = s.rotationY ?? 0;
+    const sc = s.scale ?? 1;
+    const cos = Math.cos(r);
+    const sin = Math.sin(r);
+    // a prefab-local (lx,lz) → world, honouring the structure's rotation + scale
+    const toWorldX = (lx: number, lz: number) => s.position[0] + (lx * cos + lz * sin) * sc;
+    const toWorldZ = (lx: number, lz: number) => s.position[2] + (-lx * sin + lz * cos) * sc;
     const colliderDefs = [...(s.collider ? [s.collider] : []), ...(s.colliders ?? [])];
     for (const def of colliderDefs) {
-      const r = s.rotationY ?? 0;
-      const sc = s.scale ?? 1;
       const dx = (def.dx ?? 0) * sc;
       const dz = (def.dz ?? 0) * sc;
-      colliders.push({
+      colliders.push({ ax: s.position[0], az: s.position[2], dx: dx * cos + dz * sin, dz: -dx * sin + dz * cos, radius: def.radius * sc });
+    }
+    // prefab-emitted track data (barrier walls, boost strips, lap checkpoints)
+    const prefabColliders = (obj.userData.colliders as { dx: number; dz: number; radius: number }[] | undefined) ?? [];
+    for (const def of prefabColliders) {
+      colliders.push({ ax: toWorldX(def.dx, def.dz), az: toWorldZ(def.dx, def.dz), dx: 0, dz: 0, radius: def.radius * sc });
+    }
+    // Auto-collision: anything solid (tall enough, ground-level, no hand-authored
+    // or prefab colliders, not a backdrop or opted-out) gets a box collider from
+    // its footprint — so new props block the car without per-object wiring.
+    const footH = localBox.max.y;
+    const footW = localBox.max.x - localBox.min.x;
+    const footD = localBox.max.z - localBox.min.z;
+    if (
+      colliderDefs.length === 0 &&
+      prefabColliders.length === 0 &&
+      !obj.userData.noCollide &&
+      !s.backdrop &&
+      (s.position[1] ?? 0) <= AUTO_COLLIDE_MAX_Y &&
+      footH >= AUTO_COLLIDE_MIN_H &&
+      footW > 0.4 &&
+      footD > 0.4
+    ) {
+      const cxl = (localBox.min.x + localBox.max.x) / 2;
+      const czl = (localBox.min.z + localBox.max.z) / 2;
+      boxColliders.push({
         ax: s.position[0],
         az: s.position[2],
-        dx: dx * Math.cos(r) + dz * Math.sin(r),
-        dz: -dx * Math.sin(r) + dz * Math.cos(r),
-        radius: def.radius * sc,
+        dx: (cxl * cos + czl * sin) * sc,
+        dz: (-cxl * sin + czl * cos) * sc,
+        hx: (footW / 2) * sc,
+        hz: (footD / 2) * sc,
+        rot: r,
       });
+    }
+    for (const b of (obj.userData.boosts as { x: number; z: number; yaw: number; strength: number; radius: number; duration: number }[] | undefined) ?? []) {
+      boosts.push({ position: new THREE.Vector3(toWorldX(b.x, b.z), 0, toWorldZ(b.x, b.z)), yaw: b.yaw + r, strength: b.strength, radius: b.radius, duration: b.duration, wasInside: false });
+    }
+    for (const c of (obj.userData.checkpoints as { x: number; z: number }[] | undefined) ?? []) {
+      checkpoints.push(new THREE.Vector3(toWorldX(c.x, c.z), 0, toWorldZ(c.x, c.z)));
+    }
+    for (const span of (obj.userData.bridgeSpans as { x: number; z: number }[][] | undefined) ?? []) {
+      bridgeSpans.push(span.map((pt) => ({ x: toWorldX(pt.x, pt.z), z: toWorldZ(pt.x, pt.z) })));
+    }
+    for (const gc of (obj.userData.grassClear as number[][] | undefined) ?? []) {
+      grassClear.push([toWorldX(gc[0], gc[1]), toWorldZ(gc[0], gc[1]), gc[2] * sc, gc[3] * sc, (gc[4] ?? 0) + r]);
+    }
+    const rz = obj.userData.race as RaceZone | undefined;
+    if (rz) {
+      race = {
+        padX: toWorldX(rz.padX, rz.padZ),
+        padZ: toWorldZ(rz.padX, rz.padZ),
+        padR: rz.padR * sc,
+        gridX: toWorldX(rz.gridX, rz.gridZ),
+        gridZ: toWorldZ(rz.gridX, rz.gridZ),
+        yaw: rz.yaw + r,
+      };
     }
     addItem(obj);
   });
@@ -155,7 +263,7 @@ function buildBiome(
     : null;
 
   scene.add(group);
-  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders, river, skiLifts, conveyors };
+  return { id: config.id, config, group, morphItems, clickables, pads, billboards, spinners, galleries, videos, glows, waters, focusables, colliders, boxColliders, river, skiLifts, conveyors, boosts, checkpoints, bridgeSpans, grassClear, race };
 }
 
 function disposeMaterial(m: THREE.Material | THREE.Material[]) {

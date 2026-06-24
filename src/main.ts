@@ -10,21 +10,43 @@ import { CameraRig } from './engine/CameraRig';
 import { FocusController } from './engine/FocusController';
 import { TireFX } from './engine/TireFX';
 import { DolphinFX } from './engine/DolphinFX';
-import { Minimap } from './engine/Minimap';
+import { Minimap, type MapMarker } from './engine/Minimap';
 import { TourController, type PadLink } from './engine/TourController';
 import { Unit } from './engine/Unit';
 import { ClickToMove } from './engine/ClickToMove';
 import { AssetRegistry } from './engine/AssetRegistry';
-import { BiomeManager, type PadInstance } from './engine/Biome';
+import { BiomeManager, type PadInstance, type BuiltBiome } from './engine/Biome';
+import { bridgeHeight, ROAD_HALF } from './engine/bridges';
 import { TransitionController } from './engine/TransitionController';
 import { InteractionManager } from './engine/InteractionManager';
 import { LiftController } from './engine/LiftController';
+import { RaceController, type RaceUI } from './engine/RaceController';
 import { summitHeight, SUMMIT_BASE_Y } from './engine/summit';
 import { loadWorld } from './engine/WorldLoader';
 import { AudioManager } from './engine/AudioManager';
-import { WORLD_PERIOD, setWorldPeriod, wrapDelta } from './engine/wrap';
+import { WORLD_PERIOD, setWorldPeriod, wrapDelta, wrapDistXZ } from './engine/wrap';
 import { initQuality, detectMobile } from './engine/quality';
-import type { SpawnConfig } from './world/types';
+import type { SpawnConfig, AtmosphereConfig } from './world/types';
+
+/** Merge prefab-emitted grass-clear shapes (e.g. the racetrack) into a biome's
+ *  atmosphere config so blades don't poke through the track. */
+function withClear(cfg: AtmosphereConfig | undefined, extra: number[][]): AtmosphereConfig | undefined {
+  if (!cfg || !extra.length) return cfg;
+  return { ...cfg, grassClear: [...(cfg.grassClear ?? []), ...extra] };
+}
+
+/** The drivable surface for a biome: a raised deck over its racetrack bridges,
+ *  flat ground (0) elsewhere; null when the biome has no bridges. */
+function surfaceFor(b: BuiltBiome): ((x: number, z: number) => number | null) | null {
+  return b.bridgeSpans.length ? (x, z) => bridgeHeight(x, z, b.bridgeSpans, ROAD_HALF) : null;
+}
+
+/** Non-pad minimap markers a biome exposes (race start, …); extend as POIs grow. */
+function mapMarkers(b: BuiltBiome): MapMarker[] {
+  const m: MapMarker[] = [];
+  if (b.race) m.push({ x: b.race.padX, z: b.race.padZ, color: '#39d98a' });
+  return m;
+}
 
 function hideLoader() {
   document.getElementById('loader')?.classList.add('hidden');
@@ -104,7 +126,10 @@ async function boot() {
   const start = biomes.start(world.startBiome);
   applySpawn(unit, start.config.spawn);
   unit.colliders = start.colliders;
+  unit.boxColliders = start.boxColliders;
   unit.river = start.river;
+  unit.bridgeSpans = start.bridgeSpans;
+  unit.surface = surfaceFor(start);
   engine.postfx.setSelection(start.glows);
 
   const fx = new MorphFX(
@@ -114,7 +139,7 @@ async function boot() {
   );
 
   const atmosphere = new Atmosphere(engine.scene);
-  atmosphere.setBiome(start.config.atmosphere, { river: start.river, pads: start.pads });
+  atmosphere.setBiome(withClear(start.config.atmosphere, start.grassClear), { river: start.river, pads: start.pads });
 
   const rig = new CameraRig(engine.camera, engine.renderer.domElement);
   // gentle intro: ease the camera in from slightly further out
@@ -130,11 +155,55 @@ async function boot() {
   dolphins.setRiver(start.river);
 
   const minimap = new Minimap();
-  minimap.setBiome(start.pads);
+  minimap.setBiome(start.pads, mapMarkers(start));
 
   const transition = new TransitionController();
   const interaction = new InteractionManager();
   interaction.setBiome(start.pads, unit.position);
+
+  // ---- race flow + lap-timer HUD (racetrack) ----
+  const lapEl = document.createElement('div');
+  lapEl.id = 'lap-timer';
+  lapEl.innerHTML =
+    '<div class="lt-cur">0.00</div><div class="lt-rows"><span>Last <b class="lt-last">—</b></span><span>Best <b class="lt-best">—</b></span></div>';
+  document.body.appendChild(lapEl);
+  const ltCur = lapEl.querySelector('.lt-cur') as HTMLElement;
+  const ltLast = lapEl.querySelector('.lt-last') as HTMLElement;
+  const ltBest = lapEl.querySelector('.lt-best') as HTMLElement;
+  const cdEl = document.createElement('div');
+  cdEl.id = 'race-countdown';
+  document.body.appendChild(cdEl);
+  let lapFlashT = 0;
+  const fmtTime = (t: number) => {
+    const m = Math.floor(t / 60);
+    const s = t - m * 60;
+    return m > 0 ? `${m}:${s.toFixed(2).padStart(5, '0')}` : s.toFixed(2);
+  };
+  const raceUI: RaceUI = {
+    countdown: (text) => {
+      if (text === null) {
+        cdEl.classList.remove('show');
+        return;
+      }
+      cdEl.textContent = text;
+      cdEl.classList.toggle('go', text === 'GO');
+      cdEl.classList.remove('show');
+      void cdEl.offsetWidth; // restart the pop animation each tick
+      cdEl.classList.add('show');
+    },
+    showTimer: (show) => lapEl.classList.toggle('show', show),
+    time: (t) => (ltCur.textContent = fmtTime(t)),
+    result: (last, best) => {
+      ltCur.textContent = fmtTime(last);
+      ltLast.textContent = fmtTime(last);
+      ltBest.textContent = fmtTime(best);
+      lapEl.classList.add('flash');
+      window.clearTimeout(lapFlashT);
+      lapFlashT = window.setTimeout(() => lapEl.classList.remove('flash'), 1600);
+    },
+  };
+  const race = new RaceController(unit, fx, raceUI);
+  race.setBiome(start.race, start.checkpoints);
 
   window.addEventListener('pagehide', () => engine.dispose(), { once: true });
 
@@ -151,7 +220,7 @@ async function boot() {
 
   const click = new ClickToMove(engine.camera, engine.renderer.domElement, env.ground, engine.scene, {
     onGround: (p) => {
-      if (locked) return;
+      if (locked || race.inputLocked) return;
       audio.unlock();
       unit.setTarget(p);
       audio.move();
@@ -165,7 +234,27 @@ async function boot() {
         window.open(url, '_blank', 'noopener');
       }
     },
-    isLocked: () => locked || tourActive || liftActive,
+    isLocked: () => locked || tourActive || liftActive || race.inputLocked,
+  });
+
+  // ---- keyboard driving (WASD / arrow keys) ----
+  const keys = new Set<string>();
+  const DRIVE_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (!DRIVE_KEYS.has(k)) return;
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return; // don't hijack dev-GUI inputs
+    keys.add(k);
+    e.preventDefault();
+    audio.unlock();
+    if (!entered) enterFreeRoam(); // pressing a drive key also leaves the start screen
+  });
+  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+  window.addEventListener('blur', () => keys.clear());
+  const readDrive = () => ({
+    throttle: (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0),
+    steer: (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0),
   });
 
   function triggerMorph(target: string, opts?: { spawn?: SpawnConfig; snap?: boolean }) {
@@ -186,7 +275,7 @@ async function boot() {
     const from = biomes.current;
     const to = biomes.build(target, true);
     audio.setBiome(to.config.audio);
-    atmosphere.setBiome(to.config.atmosphere, { river: to.river, pads: to.pads });
+    atmosphere.setBiome(withClear(to.config.atmosphere, to.grassClear), { river: to.river, pads: to.pads });
     engine.postfx.setSelection([...from.glows, ...to.glows]);
     const spawn = opts?.spawn ?? to.config.spawn ?? { position: [0, 0, 11] as const, rotationY: Math.PI };
     transition.morph({
@@ -204,11 +293,14 @@ async function boot() {
         biomes.dispose(from);
         biomes.current = to;
         interaction.setBiome(to.pads, unit.position);
-        minimap.setBiome(to.pads);
+        race.setBiome(to.race, to.checkpoints);
+        minimap.setBiome(to.pads, mapMarkers(to));
         focus.setBiome(to.focusables);
         unit.colliders = to.colliders;
+        unit.boxColliders = to.boxColliders;
         unit.river = to.river;
-        unit.surface = null;
+        unit.bridgeSpans = to.bridgeSpans;
+        unit.surface = surfaceFor(to);
         click.setGroundPlane(null);
         dolphins.setRiver(to.river);
         engine.postfx.setSelection(to.glows);
@@ -227,13 +319,17 @@ async function boot() {
     enterSummit: () => {
       unit.surface = summitHeight; // drive on the raised dome
       unit.colliders = [];
+      unit.boxColliders = [];
       unit.river = null;
+      unit.bridgeSpans = [];
       click.setGroundPlane(SUMMIT_BASE_Y); // clicks resolve on the summit
     },
     exitSummit: () => {
-      unit.surface = null; // back on flat ground
       unit.colliders = biomes.current?.colliders ?? [];
+      unit.boxColliders = biomes.current?.boxColliders ?? [];
       unit.river = biomes.current?.river ?? null;
+      unit.bridgeSpans = biomes.current?.bridgeSpans ?? [];
+      unit.surface = biomes.current ? surfaceFor(biomes.current) : null; // back to flat ground / bridges
       click.setGroundPlane(null);
     },
     setActive: (a) => {
@@ -283,6 +379,7 @@ async function boot() {
     padGraph,
     setTourActive: (a) => {
       tourActive = a;
+      unit.ghost = a; // the tour drives on rails — never let a prop block its path
       updateTourButton();
     },
     onEnd: showHint, // tour over → free roam: re-show the controls hint
@@ -437,10 +534,31 @@ async function boot() {
   engine.start((dt) => {
     tour.update(dt); // resolve tour steps (may set a new drive target) before the unit moves
     lift.update(dt); // the ski lift owns the car's transform while carrying it
+    rig.setChase(null); // free orbit unless keyboard-driving / racing (set below)
     if (!locked && !lift.carrying) {
+      // keyboard driving — suppressed while the tour/lift drives, or during a race
+      // countdown / drive-off (race.inputLocked)
+      const driveAllowed = !tourActive && !liftActive && !race.inputLocked;
+      const d = driveAllowed ? readDrive() : { throttle: 0, steer: 0 };
+      unit.setDrive(d.throttle, d.steer);
       unit.update(dt);
+      // lock the camera behind the car while keyboard-driving or during a race start/finish
+      if (d.throttle !== 0 || d.steer !== 0 || race.inputLocked) rig.setChase(unit.object.rotation.y);
       // tour + lift drive morphs explicitly, so suppress the proximity trigger then
-      if (!tourActive && !liftActive) interaction.update(unit.position, onPadEnter);
+      if (!tourActive && !liftActive) {
+        if (!race.inputLocked) interaction.update(unit.position, onPadEnter);
+        // racetrack boost strips: fling the car along the arrows on entry
+        const boosts = biomes.current?.boosts;
+        if (boosts && !race.inputLocked) {
+          for (const b of boosts) {
+            const inside = wrapDistXZ(unit.position.x, unit.position.z, b.position.x, b.position.z) < b.radius;
+            if (inside && !b.wasInside) unit.boost(b.strength, b.duration);
+            b.wasInside = inside;
+          }
+        }
+        // race flow: staging-pad trigger → countdown → timed lap → confetti + drive-off
+        race.update(dt);
+      }
     }
     // Seamless toroidal world: draw content at its nearest image to the unit and
     // recentre the ground/sky/sun on the unit, so every direction loops back.
@@ -449,7 +567,7 @@ async function boot() {
     click.update(dt, unit.hasTarget && !locked);
     // Engage focus only when parked near content; the moment the unit is driving
     // (hasTarget), release so the player sees the world and can steer freely.
-    const focusOverride = focus.update(dt, unit.position, !locked && !unit.hasTarget && !liftActive);
+    const focusOverride = focus.update(dt, unit.position, !locked && !unit.driving && !liftActive);
     rig.update(dt, unit.position, focusOverride);
     fx.update(dt);
     if (!lift.carrying) tireFX.update(dt, unit); // no tyre dust while airborne on the lift

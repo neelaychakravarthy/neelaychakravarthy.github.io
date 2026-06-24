@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WORLD_PERIOD } from './wrap';
 import { SUMMIT_BASE_Y, SUMMIT_DOME, SUMMIT_RADIUS, SUMMIT_PEAK_DX, SUMMIT_PEAK_DZ, SUMMIT_PEAK_R } from './summit';
+import { bridgeHeight } from './bridges';
 
 /** Half-width (x) of the central grass land-bridge; the river is the gap beyond it. */
 export const BRIDGE_HALF = 42;
@@ -401,6 +402,7 @@ export class AssetRegistry {
       );
       portal.position.y = 2.05;
       g.add(top, portal);
+      g.userData.noCollide = true; // an archway you drive through, not a wall
       return g;
     },
     'big-phone': (seed) => {
@@ -641,22 +643,25 @@ export class AssetRegistry {
     // (local -x) side. Placed at both bridge edges (the west one rotated 180°).
     beach: () => {
       const g = new THREE.Group();
+      // Flush sand (top ≈ y 0.03) so the racetrack — which crosses the beach on
+      // its way to the sea bridges — and its boost strips render on top, not buried.
       const sand = mesh(new THREE.BoxGeometry(11, 0.25, 50), std('#e8d4a2', { roughness: 1 }));
-      sand.position.set(0, 0.13, 0);
+      sand.position.set(0, -0.1, 0);
       sand.receiveShadow = true;
       g.add(sand);
       const pole = mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), std('#c9c9c9'));
-      pole.position.set(-3, 1.1, 6);
+      pole.position.set(-3, 1.0, 6);
       const canopy = mesh(new THREE.ConeGeometry(1.5, 0.7, 12), std('#e6533f', { roughness: 0.7 }));
-      canopy.position.set(-3, 2.35, 6);
+      canopy.position.set(-3, 2.25, 6);
       g.add(pole, canopy);
       const p1 = palm();
-      p1.position.set(-3.5, 0.2, -12);
+      p1.position.set(-3.5, 0.0, -12);
       const p2 = palm();
-      p2.position.set(-3, 0.2, 17);
+      p2.position.set(-3, 0.0, 17);
       p2.rotation.y = 1.2;
       p2.scale.setScalar(0.85);
       g.add(p1, p2);
+      g.userData.noCollide = true; // drivable sand (the racetrack crosses it); palms are decoration
       return g;
     },
     // The looping river: a wide water band whose shader carves out the central
@@ -1411,6 +1416,339 @@ export class AssetRegistry {
       pts.frustumCulled = false;
       pts.userData.water = true; // reuse the per-frame shader uTime tick
       g.add(pts);
+      return g;
+    },
+
+    // ---------- racetrack (hub) ----------
+    // A big winding circuit that rings the whole hub: the projects sit in the
+    // infield and a lap tours past each one. Built as an asphalt ribbon with
+    // kerbs + a dashed centre line, dense red/white barriers (with drive-in gaps),
+    // two raised bridges out over the sea, a chequered start/finish under a flag
+    // gantry, boost strips on the straights, and tyre-stacks. Emits via userData:
+    // barrier colliders, bridge spans (raised deck the car drives over the water
+    // on), boost strips, lap checkpoints, and grass-clear strips.
+    racetrack: () => {
+      const g = new THREE.Group();
+      const HW = 4.0; // half track width
+      const RHALF = 25, RBR = 42; // sea band (matches world.json river halfZ / bridgeHalf)
+      const isSea = (x: number, z: number) => Math.abs(z) < RHALF && Math.abs(x) > RBR;
+      // closed winding centre-line in WORLD coords (the track sits at the origin):
+      // a ring around the hub, with east + west lobes that arc out over the sea.
+      const wp: [number, number][] = [
+        [0, 62], [26, 59], [44, 49], [53, 31], [50, 18], [52, 8], [44, -2],
+        [38, -8], [31, -18], [16, -20], [-16, -20], [-31, -18], [-38, -8],
+        [-44, -2], [-52, 8], [-50, 18], [-53, 31], [-44, 49], [-26, 59],
+      ];
+      const curve = new THREE.CatmullRomCurve3(wp.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'catmullrom', 0.5);
+      const N = 320;
+      const samples = Array.from({ length: N }, (_, i) => {
+        const u = i / N;
+        const p = curve.getPointAt(u);
+        const t = curve.getTangentAt(u);
+        const left = new THREE.Vector3(-t.z, 0, t.x).setLength(HW); // perpendicular
+        return { u, p, t, left, yaw: Math.atan2(t.x, t.z), sea: isSea(p.x, p.z), hb: 0 };
+      });
+
+      // bridge spans: each contiguous run of sea samples, extended onto land at
+      // both ends for the approach ramps. The deck height profile (shared with the
+      // car) comes from these via bridgeHeight().
+      const runs: number[][] = [];
+      let cur: number[] = [];
+      for (let i = 0; i < N; i++) {
+        if (samples[i].sea) cur.push(i);
+        else if (cur.length) { runs.push(cur); cur = []; }
+      }
+      if (cur.length) runs.push(cur);
+      const EXT = 7;
+      const spans = runs.map((run) => {
+        const pts: { x: number; z: number }[] = [];
+        for (let k = run[0] - EXT; k <= run[run.length - 1] + EXT; k++) {
+          const s = samples[((k % N) + N) % N];
+          pts.push({ x: s.p.x, z: s.p.z });
+        }
+        return pts;
+      });
+      for (const s of samples) s.hb = bridgeHeight(s.p.x, s.p.z, spans, HW);
+      g.userData.bridgeSpans = spans;
+
+      // asphalt ribbon (rises onto the bridge decks via the per-sample height)
+      const pos: number[] = [];
+      const idx: number[] = [];
+      for (const s of samples) {
+        const y = 0.06 + s.hb;
+        const l = s.p.clone().add(s.left);
+        const r = s.p.clone().sub(s.left);
+        pos.push(l.x, y, l.z, r.x, y, r.z);
+      }
+      for (let i = 0; i < N; i++) {
+        const a = 2 * i, b = 2 * i + 1, c = 2 * ((i + 1) % N), d = c + 1;
+        idx.push(a, c, b, b, c, d);
+      }
+      const tgeo = new THREE.BufferGeometry();
+      tgeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      tgeo.setIndex(idx);
+      tgeo.computeVertexNormals();
+      const track = mesh(tgeo, std('#34373e', { roughness: 0.96, side: THREE.DoubleSide }), false);
+      track.receiveShadow = true;
+      g.add(track);
+
+      // bridge deck (opaque planks under the asphalt) + support pylons into the sea
+      const deckMat = std('#6b4a2a', { roughness: 0.85 });
+      const postMat = std('#4a3320', { roughness: 0.9 });
+      const plankGeo = new THREE.BoxGeometry((HW + 0.5) * 2, 0.18, 1.25);
+      for (let i = 0; i < N; i++) {
+        const s = samples[i];
+        if (s.hb < 0.05) continue;
+        const plank = mesh(plankGeo, deckMat, false);
+        plank.position.set(s.p.x, s.hb - 0.05, s.p.z);
+        plank.rotation.y = s.yaw;
+        g.add(plank);
+        if (s.sea && i % 6 === 0) {
+          for (const side of [1, -1] as const) {
+            const o = s.p.clone().add(s.left.clone().setLength(HW + 0.3).multiplyScalar(side));
+            const h = s.hb + 1.3;
+            const post = mesh(new THREE.CylinderGeometry(0.2, 0.2, h, 8), postMat);
+            post.position.set(o.x, s.hb - 0.05 - h / 2, o.z);
+            g.add(post);
+          }
+        }
+      }
+
+      // dashed centre line + red/white kerbs along both edges (land only)
+      const dashMat = std('#e8ecf0', { roughness: 0.7 });
+      for (let i = 0; i < N; i += 5) {
+        const s = samples[i];
+        const dash = mesh(new THREE.BoxGeometry(0.9, 0.03, 0.22), dashMat, false);
+        dash.position.set(s.p.x, 0.07 + s.hb, s.p.z);
+        dash.rotation.y = s.yaw;
+        g.add(dash);
+      }
+      const kc = new THREE.Color();
+      const landCount = samples.filter((s) => s.hb < 0.05).length;
+      const kerbMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.08, 1.1), std('#ffffff', { roughness: 0.7 }), landCount * 2);
+      const km = new THREE.Object3D();
+      let ki = 0;
+      for (let i = 0; i < N; i++) {
+        const s = samples[i];
+        if (s.hb >= 0.05) continue;
+        for (const side of [1, -1] as const) {
+          const e = s.p.clone().add(s.left.clone().multiplyScalar(side * 0.95));
+          km.position.set(e.x, 0.06, e.z);
+          km.rotation.set(0, s.yaw, 0);
+          km.updateMatrix();
+          kerbMesh.setMatrixAt(ki, km.matrix);
+          kerbMesh.setColorAt(ki, kc.set(i % 2 ? '#d83a3a' : '#f2f2f2'));
+          ki++;
+        }
+      }
+      kerbMesh.instanceMatrix.needsUpdate = true;
+      g.add(kerbMesh);
+
+      // dense red/white side barriers (instanced), with two drive-in gaps; one
+      // collider per post so the car bounces off the walls (gaps stay clear). On
+      // the bridges these double as the railings (raised to the deck height).
+      const colliders: { dx: number; dz: number; radius: number }[] = [];
+      const openings = [0.0, 0.565]; // u-centres of the gaps (start/finish + the ski-lift corridor)
+      const isOpen = (u: number) => openings.some((o) => Math.abs(((u - o + 0.5 + 1) % 1) - 0.5) < 0.03);
+      const posts: { x: number; z: number; yaw: number; y: number; red: boolean }[] = [];
+      for (let i = 0; i < N; i += 4) {
+        const s = samples[i];
+        if (isOpen(s.u)) continue;
+        for (const side of [1, -1] as const) {
+          const b = s.p.clone().add(s.left.clone().setLength(HW + 0.55).multiplyScalar(side));
+          posts.push({ x: b.x, z: b.z, yaw: s.yaw, y: 0.48 + s.hb, red: i % 8 < 4 });
+          colliders.push({ dx: b.x, dz: b.z, radius: 2.3 });
+        }
+      }
+      const barrierMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.95, 1.5), std('#ffffff', { roughness: 0.75 }), posts.length);
+      const bm = new THREE.Object3D();
+      posts.forEach((p, i) => {
+        bm.position.set(p.x, p.y, p.z);
+        bm.rotation.set(0, p.yaw, 0);
+        bm.updateMatrix();
+        barrierMesh.setMatrixAt(i, bm.matrix);
+        barrierMesh.setColorAt(i, kc.set(p.red ? '#d83a3a' : '#f2f2f2'));
+      });
+      barrierMesh.instanceMatrix.needsUpdate = true;
+      barrierMesh.castShadow = true;
+      g.add(barrierMesh);
+      g.userData.colliders = colliders;
+
+      // boost strips on the straights (arrow visual + emitted data); land only
+      const boostArrow = () => {
+        const a = new THREE.Group();
+        const pad = mesh(new THREE.BoxGeometry(2.8, 0.04, 4.8), std('#16181e', { roughness: 0.85, emissive: '#3a2e00', emissiveIntensity: 0.2 }), false);
+        pad.position.y = 0.09;
+        a.add(pad);
+        for (let i = 0; i < 3; i++)
+          for (const sx of [-1, 1]) {
+            const bar = mesh(new THREE.BoxGeometry(1.6, 0.06, 0.42), std('#ffce3a', { emissive: '#ffce3a', emissiveIntensity: 1.0, roughness: 0.4 }), false);
+            bar.position.set(sx * 0.6, 0.13, -1.4 + i * 1.4);
+            bar.rotation.y = sx * 0.7;
+            a.add(bar);
+          }
+        return a;
+      };
+      const boosts: { x: number; z: number; yaw: number; strength: number; radius: number; duration: number }[] = [];
+      for (const u of [0.04, 0.16, 0.5, 0.62]) {
+        const s = samples[Math.round(u * N) % N];
+        if (s.hb >= 0.05) continue;
+        const arrow = boostArrow();
+        arrow.position.set(s.p.x, 0, s.p.z);
+        arrow.rotation.y = s.yaw;
+        g.add(arrow);
+        boosts.push({ x: s.p.x, z: s.p.z, yaw: s.yaw, strength: 21, radius: 3.6, duration: 1.4 });
+      }
+      g.userData.boosts = boosts;
+
+      // start/finish: a chequered band ACROSS the track + a flag gantry overhead.
+      // Built spanning local X (the perpendicular under rotation.y = yaw), so it
+      // lies across the road rather than down it.
+      const f = samples[0];
+      const finishLine = new THREE.Group();
+      const cellW = (HW * 2) / 8;
+      for (let c = 0; c < 8; c++)
+        for (let r = 0; r < 2; r++) {
+          const col = (c + r) % 2 ? '#f4f4f4' : '#141414';
+          const sq = mesh(new THREE.BoxGeometry(cellW, 0.04, 0.85), std(col, { roughness: 0.7 }), false);
+          sq.position.set(-HW + (c + 0.5) * cellW, 0.14, -0.42 + r * 0.85);
+          finishLine.add(sq);
+        }
+      const gMat = std('#cdd3da', { metalness: 0.3, roughness: 0.5 });
+      for (const sx of [-1, 1]) {
+        const post = mesh(new THREE.CylinderGeometry(0.16, 0.2, 5, 8), gMat);
+        post.position.set(sx * (HW + 0.6), 2.5, 0);
+        finishLine.add(post);
+      }
+      const beam = mesh(new THREE.BoxGeometry(HW * 2 + 1.6, 0.5, 0.4), gMat);
+      beam.position.set(0, 5, 0);
+      finishLine.add(beam);
+      const bannerCell = (HW * 2 + 1.4) / 9;
+      for (let c = 0; c < 9; c++)
+        for (let r = 0; r < 2; r++) {
+          const col = (c + r) % 2 ? '#f4f4f4' : '#141414';
+          const sq = mesh(new THREE.BoxGeometry(bannerCell, 0.42, 0.06), std(col, { roughness: 0.6 }), false);
+          sq.position.set(-(HW + 0.7) + (c + 0.5) * bannerCell, 4.55 - r * 0.42, 0);
+          finishLine.add(sq);
+        }
+      for (const sx of [-1, 1]) {
+        const flag = mesh(new THREE.BoxGeometry(1.0, 0.7, 0.06), std(sx < 0 ? '#d83a3a' : '#161616', { roughness: 0.6 }), false);
+        flag.position.set(sx * (HW + 0.2), 5.55, 0);
+        finishLine.add(flag);
+      }
+      finishLine.position.set(f.p.x, 0, f.p.z);
+      finishLine.rotation.y = f.yaw;
+      g.add(finishLine);
+
+      // tyre-stacks at a few apexes (outside the barrier, on land)
+      const tyreMat = std('#1b1d22', { roughness: 0.9 });
+      for (const u of [0.22, 0.72]) {
+        const s = samples[Math.round(u * N) % N];
+        if (s.hb >= 0.05) continue;
+        const o = s.p.clone().add(s.left.clone().setLength(HW + 1.9));
+        const stack = new THREE.Group();
+        for (let k = 0; k < 3; k++) {
+          const tyre = mesh(new THREE.TorusGeometry(0.5, 0.26, 8, 12), tyreMat);
+          tyre.rotation.x = Math.PI / 2;
+          tyre.position.y = 0.28 + k * 0.42;
+          stack.add(tyre);
+        }
+        stack.position.set(o.x, 0, o.z);
+        g.add(stack);
+      }
+
+      // grass-clear strips along the track so blades don't poke through the road
+      const grassClear: number[][] = [];
+      for (let i = 0; i < N; i += 10) {
+        const s = samples[i];
+        if (s.hb >= 0.05) continue;
+        grassClear.push([s.p.x, s.p.z, 6.0, HW + 0.7, Math.atan2(-s.t.z, s.t.x)]);
+      }
+      // race staging pad: drive onto it (in the infield, just inside the start
+      // line) to trigger a timed race — you teleport to the grid for a countdown.
+      const RPX = 0, RPZ = 52, RPR = 3.6;
+      const racePad = new THREE.Group();
+      const disc = mesh(new THREE.CylinderGeometry(RPR, RPR, 0.08, 36), std('#0c2a1a', { emissive: '#39d98a', emissiveIntensity: 0.5, roughness: 0.5 }), false);
+      disc.position.y = 0.07;
+      racePad.add(disc);
+      const ring = mesh(new THREE.TorusGeometry(RPR, 0.18, 10, 44), std('#39d98a', { emissive: '#39d98a', emissiveIntensity: 1.1, roughness: 0.4 }), false);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.11;
+      racePad.add(ring);
+      const beacon = mesh(new THREE.OctahedronGeometry(0.62), std('#39d98a', { emissive: '#39d98a', emissiveIntensity: 1.0, roughness: 0.4 }), false);
+      beacon.position.set(0, 1.7, 0);
+      beacon.userData.spinSpeed = 1.5;
+      beacon.userData.spinAxis = 'y';
+      racePad.add(beacon);
+      racePad.position.set(RPX, 0, RPZ);
+      g.add(racePad);
+      grassClear.push([RPX, RPZ, RPR + 0.6, RPR + 0.6, 0]); // keep grass off the pad
+      g.userData.grassClear = grassClear;
+
+      // lap checkpoints (visit all, in any order, then cross the finish [0])
+      g.userData.checkpoints = [0, 3, 6, 9, 12, 15].map((wi) => ({ x: wp[wi][0], z: wp[wi][1] }));
+      // race start: drive onto the pad → teleport to the grid (the finish line) facing the race dir
+      g.userData.race = { padX: RPX, padZ: RPZ, padR: RPR, gridX: f.p.x, gridZ: f.p.z, yaw: f.yaw };
+      return g;
+    },
+
+    // A grandstand packed with a stylized crowd — the "hundreds of fans" trick is
+    // one InstancedMesh of tiny coloured capsules across tiered steps (cheap, but
+    // reads as a dense crowd). Front (crowd faces +z) toward the track; rotate to aim.
+    grandstand: () => {
+      const g = new THREE.Group();
+      const W = 17;
+      const rows = 6;
+      const rowD = 1.0;
+      const rowH = 0.55;
+      const struct = std('#737b85', { roughness: 0.85 });
+      const frame = std('#586069', { roughness: 0.8 });
+      // tiered steps
+      for (let r = 0; r < rows; r++) {
+        const step = mesh(new THREE.BoxGeometry(W, rowH, rowD + 0.05), struct);
+        step.position.set(0, rowH / 2 + r * rowH, -r * rowD);
+        step.receiveShadow = true;
+        g.add(step);
+      }
+      // side cheeks + a roof slab
+      for (const sx of [-1, 1]) {
+        const cheek = mesh(new THREE.BoxGeometry(0.5, rows * rowH + 0.5, rows * rowD), frame);
+        cheek.position.set((sx * W) / 2, (rows * rowH) / 2, (-(rows - 1) * rowD) / 2);
+        g.add(cheek);
+      }
+      const roof = mesh(new THREE.BoxGeometry(W + 1, 0.3, 2.6), frame);
+      roof.position.set(0, rows * rowH + 1.6, -(rows - 1) * rowD - 0.5);
+      for (const sx of [-1, 1]) {
+        const post = mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.8, 6), frame);
+        post.position.set((sx * (W - 1)) / 2, rows * rowH + 0.7, -(rows - 1) * rowD - 0.5);
+        g.add(post);
+      }
+      g.add(roof);
+      // the crowd — one instanced mesh of little coloured people
+      const palette = ['#e8533d', '#ffd23f', '#5ad1ff', '#7dffd6', '#ff8ac0', '#f4f4f4', '#3aa655', '#b06fff', '#ff7a1f', '#4f86c6'];
+      const perRow = 34;
+      const count = rows * perRow;
+      const crowd = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.17, 0.26, 2, 5), std('#ffffff', { roughness: 0.6 }), count);
+      crowd.castShadow = false;
+      const o = new THREE.Object3D();
+      const col = new THREE.Color();
+      let i = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < perRow; c++) {
+          o.position.set(
+            -W / 2 + 0.5 + (c * (W - 1)) / (perRow - 1) + (Math.random() - 0.5) * 0.22,
+            rowH + r * rowH + 0.36,
+            -r * rowD + 0.28 + (Math.random() - 0.5) * 0.15,
+          );
+          o.scale.setScalar(0.85 + Math.random() * 0.4);
+          o.updateMatrix();
+          crowd.setMatrixAt(i, o.matrix);
+          crowd.setColorAt(i, col.set(palette[(Math.random() * palette.length) | 0]));
+          i++;
+        }
+      }
+      crowd.instanceMatrix.needsUpdate = true;
+      g.add(crowd);
       return g;
     },
   };

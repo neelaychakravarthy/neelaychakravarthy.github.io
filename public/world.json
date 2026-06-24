@@ -1,7 +1,7 @@
 {
   "version": 1,
   "unit": { "speed": 10, "turnRate": 5.5 },
-  "period": 140,
+  "period": 180,
   "startBiome": "hub",
   "biomes": [
     {
@@ -53,7 +53,11 @@
         { "modelId": "snow-mound", "position": [-14, 25.7, -53] },
         { "modelId": "chakra-gear", "position": [9, 0, -13], "rotationY": -0.35, "scale": 0.62 },
         { "modelId": "wordle-board", "position": [30, 0, -9.5], "scale": 0.5 },
-        { "modelId": "gallery-wall", "position": [-30, 0, -9.5], "scale": 0.5 }
+        { "modelId": "gallery-wall", "position": [-30, 0, -9.5], "scale": 0.5 },
+        { "modelId": "racetrack", "position": [0, 0, 0] },
+        { "modelId": "grandstand", "position": [-26, 0, 71], "rotationY": 3.14159 },
+        { "modelId": "grandstand", "position": [0, 0, 73], "rotationY": 3.14159 },
+        { "modelId": "grandstand", "position": [26, 0, 71], "rotationY": 3.14159 }
       ],
       "content": [
         {
@@ -86,7 +90,7 @@
           "target": "hub",
           "label": "Ski Lift   ▲",
           "color": "#bfe6ff",
-          "radius": 2.7,
+          "radius": 2.0,
           "lift": {
             "ride": [[-22, 2, -26], [-22, 25, -42]],
             "toSummit": true,
@@ -104,7 +108,7 @@
           "lift": {
             "ride": [[-19, 25, -42], [-19, 2, -26]],
             "toSummit": false,
-            "land": [-19, -18],
+            "land": [-18, -11],
             "duration": 5.0
           }
         }
@@ -276,9 +280,9 @@
         { "modelId": "gateway", "position": [-6.5, 0, 0.5], "rotationY": 0.3 },
         { "modelId": "gateway", "position": [6.5, 0, 0.5], "rotationY": -0.3 },
         { "modelId": "desk", "position": [-3, 0, -1.5] },
-        { "modelId": "desk", "position": [0, 0, -1.5] },
         { "modelId": "desk", "position": [3, 0, -1.5] },
-        { "modelId": "book-stack", "position": [0, 0.81, -1.5] },
+        { "modelId": "desk", "position": [-3, 0, 1] },
+        { "modelId": "book-stack", "position": [-3, 0.81, 1] },
         { "modelId": "planter", "position": [-9, 0, 6] },
         { "modelId": "planter", "position": [9, 0, 6] },
         { "modelId": "lamppost", "position": [-7.5, 0, 7] },
@@ -330,12 +334,12 @@
         { "modelId": "plaza", "position": [0, 0, -3] },
         { "modelId": "chalkboard", "position": [0, 0, -8] },
         { "modelId": "computer-desk", "position": [-3, 0, 0] },
-        { "modelId": "computer-desk", "position": [0, 0, 0] },
         { "modelId": "computer-desk", "position": [3, 0, 0] },
         { "modelId": "computer-desk", "position": [-3, 0, 2.5] },
-        { "modelId": "computer-desk", "position": [0, 0, 2.5] },
         { "modelId": "computer-desk", "position": [3, 0, 2.5] },
-        { "modelId": "book-stack", "position": [0, 0.83, 0] },
+        { "modelId": "computer-desk", "position": [-3, 0, 5] },
+        { "modelId": "computer-desk", "position": [3, 0, 5] },
+        { "modelId": "book-stack", "position": [-3, 0.83, 0] },
         { "modelId": "pillar", "position": [-10, 0, -6] },
         { "modelId": "pillar", "position": [10, 0, -6] },
         { "modelId": "pillar", "position": [-10.5, 0, 4] },
@@ -390,7 +394,6 @@
         { "modelId": "chalkboard", "position": [5.5, 0, -5], "rotationY": -0.5 },
         { "modelId": "podium", "position": [0, 0, -6.5] },
         { "modelId": "desk", "position": [-3, 0, 0.5] },
-        { "modelId": "desk", "position": [0, 0, 0.5] },
         { "modelId": "desk", "position": [3, 0, 0.5] },
         { "modelId": "desk", "position": [-3, 0, 3] },
         { "modelId": "desk", "position": [3, 0, 3] },
